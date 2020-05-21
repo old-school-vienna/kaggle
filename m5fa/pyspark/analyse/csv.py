@@ -23,7 +23,7 @@ t_vars_small = vars("d_", 1, 15)
 grp_vars = ["id", "item_id", "dept_id", "cat_id", "store_id", "state_id"]
 print(grp_vars)
 
-train: DataFrame = spark.read.csv("data/sales_train_validation.csv", header=True)
+train: DataFrame = spark.read.csv("data/original/sales_train_validation.csv", header=True)
 
 train1 = train[grp_vars] \
     .sort('item_id', 'state_id')
