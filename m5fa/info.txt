@@ -1,0 +1,30 @@
+m5 forecasting accuracy
+forecast daily sales of (?) for the next 28 days
+
+sales_train_validation.csv
+
+state             state_id CA, TX, WI
+store detail      store_id
+department        dept_id
+product category  cat_id
+item level        item_id 
+                  id
+                  d_1 - d_1900
+	
+
+explanatory:
+ price
+ promotions
+ day of the week
+ special events
+
+
+docker build -t myspark:01
+docker run -it -v /Users/wwagner4/prj/kaggle/m5fa/pyspark/analyse:/opt/project myspark:01 bash
+
+
+["id", "item_id", "dept_id", "cat_id", "store_id", "state_id"]
+
+
+
+d_1 - d_1913
