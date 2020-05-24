@@ -58,10 +58,10 @@ t2 = t1 \
     .reduceByKey(lambda a, x: a + x) \
 
 t2.cache()
-t2.take(5)
+t3 = t2.take(5)
 
 
-for r in t2:
+for r in t3:
     print(r)
 
 
