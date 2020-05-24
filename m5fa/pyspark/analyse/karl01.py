@@ -1,12 +1,16 @@
 import os
+from pathlib import Path
 
+import pyspark.sql.functions as F
+import pyspark.sql.types as T
 from pyspark import Row, RDD
 from pyspark.shell import spark
 from pyspark.sql import DataFrame
-import pyspark.sql.functions as F
-import pyspark.sql.types as T
 
 datadir: str = os.getenv("DATADIR")
+if datadir is None:
+    raise ValueError("Environment variable DATADIR must be defined")
+print(f"datadir = '{datadir}'")
 
 schema = T.StructType([
     T.StructField('year', T.IntegerType(), True),
@@ -25,18 +29,41 @@ schema = T.StructType([
 
 def mse(row: Row) -> Row:
     d = row.asDict()
-    d['mse'] = (d['Sales_Pred'] + d['sales']) ** 2
+    _mse = 0.0
+    if d['Sales_Pred'] is None:
+        print("'Sales_Pred'=None")
+        _mse = 0
+    elif d['sales'] is None:
+        _mse = d['Sales_Pred'] ** 2
+    else:
+        _mse = (d['Sales_Pred'] - d['sales']) ** 2
+    d['mse'] = _mse
     return Row(**d)
 
 
-train: DataFrame = spark.read.csv(f"{datadir}/Sales5_Ab2011_InklPred.csv", header=True, schema=schema)
-t: RDD = train.rdd
-f = t \
-    .map(mse) \
-    .take(5)
+def keyvalues(row: Row) -> ((str, str), float):
+    d = row.asDict()
+    key = (d["store_id"], d["dept_id"])
+    return key, d["mse"]
 
-for r in f:
+p = str(Path(datadir, "Sales5_Ab2011_InklPred.csv"))
+print(f"Reading: '{p}'")
+
+train: DataFrame = spark.read.csv(p, header='true', schema=schema)
+t: RDD = train.rdd
+t1 = t.map(mse)
+t1.cache()
+t2 = t1 \
+    .map(keyvalues) \
+    .reduceByKey(lambda a, x: a + x) \
+
+t2.cache()
+t2.take(5)
+
+
+for r in t2:
     print(r)
+
 
 def df(train: DataFrame):
     """
