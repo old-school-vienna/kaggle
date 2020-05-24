@@ -25,9 +25,7 @@ schema = T.StructType([
 
 def mse(row: Row) -> Row:
     d = row.asDict()
-    sp = d['Sales_Pred']
-    s = d['sales']
-    d['mse'] = (sp + s) ** 2
+    d['mse'] = (d['Sales_Pred'] + d['sales']) ** 2
     return Row(**d)
 
 
