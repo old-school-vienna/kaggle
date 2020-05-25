@@ -11,6 +11,13 @@ docker run -it \
     -v /data/kaggle:/opt/data \
     myspark bash
 ```
+```
+docker run -it \
+    -e DATADIR=/opt/data \
+    -v /home/wwagner4/prj/kaggle/m5fa/pyspark/analyse:/opt/project \
+    -v /opt/wwa/work/kaggle:/opt/data \
+    myspark bash
+```
 
 ### Data
 Copy the original data from kaggle into data/original. They are too big for git.

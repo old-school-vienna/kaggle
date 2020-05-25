@@ -4,8 +4,12 @@ from pathlib import Path
 import pyspark.sql.functions as F
 import pyspark.sql.types as T
 from pyspark import Row, RDD
-from pyspark.shell import spark
-from pyspark.sql import DataFrame
+from pyspark.sql import DataFrame, SparkSession
+
+spark = SparkSession.builder \
+    .appName("karl01") \
+    .config("spark.driver.memory", "12g") \
+    .getOrCreate()
 
 datadir: str = os.getenv("DATADIR")
 if datadir is None:
@@ -43,8 +47,9 @@ def mse(row: Row) -> Row:
 
 def keyvalues(row: Row) -> ((str, str), float):
     d = row.asDict()
-    key = (d["store_id"], d["dept_id"])
+    key = (d["store_id"], d["dept_id"], d["year"])
     return key, d["mse"]
+
 
 p = str(Path(datadir, "Sales5_Ab2011_InklPred.csv"))
 print(f"Reading: '{p}'")
@@ -52,14 +57,11 @@ print(f"Reading: '{p}'")
 train: DataFrame = spark.read.csv(p, header='true', schema=schema)
 t: RDD = train.rdd
 t1 = t.map(mse)
-t1.cache()
 t2 = t1 \
     .map(keyvalues) \
-    .reduceByKey(lambda a, x: a + x) \
+    .reduceByKey(lambda a, x: a + x)
 
-t2.cache()
-t3 = t2.take(5)
-
+t3 = t2.collect()
 
 for r in t3:
     print(r)
