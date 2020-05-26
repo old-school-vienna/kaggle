@@ -8,6 +8,7 @@ python_version = "3.7"
 
 [packages]
 pyspark = ">=2.4.0"
+numpy = "*"
 
 [dev-packages]
 pytest = "*"

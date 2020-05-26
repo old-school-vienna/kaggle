@@ -4,6 +4,7 @@
 docker build -t myspark .
 ```
 Add the second mount if original is a link
+ben
 ```
 docker run -it \
     -e DATADIR=/opt/data \
@@ -12,6 +13,16 @@ docker run -it \
     -p 4040:4040 \
     myspark bash
 ```
+wallace
+```
+docker run -it \
+    -e DATADIR=/opt/data \
+    -v /Users/wwagner4/prj/kaggle/m5fa/pyspark/analyse:/opt/project \
+    -v /Users/wwagner4/work/kaggle:/opt/data \
+    -p 4040:4040 \
+    myspark bash
+```
+work
 ```
 docker run -it \
     -e DATADIR=/opt/data \

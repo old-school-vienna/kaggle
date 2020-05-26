@@ -23,6 +23,7 @@ COPY Pipfile .
 COPY Pipfile.lock .
 
 ENV LANG=EN
+RUN pipenv lock
 RUN pipenv --python 3.7
 RUN pipenv install --dev --system --deploy  
 
