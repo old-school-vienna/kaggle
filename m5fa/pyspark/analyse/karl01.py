@@ -57,10 +57,12 @@ print(f"Reading: '{p}'")
 train: DataFrame = spark.read.csv(p, header='true', schema=schema)
 t: RDD = train.rdd
 t1 = t.map(mse)
+t1.persist()
 t2 = t1 \
     .map(keyvalues) \
     .reduceByKey(lambda a, x: a + x)
 
+t2.persist()
 t3 = t2.collect()
 
 for r in t3:

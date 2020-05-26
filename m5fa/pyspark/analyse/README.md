@@ -9,13 +9,15 @@ docker run -it \
     -e DATADIR=/opt/data \
     -v /home/wwagner4/prj/kaggle/m5fa/pyspark/analyse:/opt/project \
     -v /data/kaggle:/opt/data \
+    -p 4040:4040 \
     myspark bash
 ```
 ```
 docker run -it \
     -e DATADIR=/opt/data \
-    -v /home/wwagner4/prj/kaggle/m5fa/pyspark/analyse:/opt/project \
+    -v /opt/wwa/prj/kaggle/m5fa/pyspark/analyse:/opt/project \
     -v /opt/wwa/work/kaggle:/opt/data \
+    -p 4040:4040 \
     myspark bash
 ```
 
