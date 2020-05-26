@@ -1,9 +1,9 @@
 import os
 from pathlib import Path
 
-import pyspark.sql.functions as F
 import pyspark.sql.types as T
-from pyspark import Row, RDD
+from pyspark import Row
+from pyspark.ml.regression import GBTRegressor
 from pyspark.sql import DataFrame, SparkSession
 
 spark = SparkSession.builder \
@@ -31,34 +31,24 @@ schema = T.StructType([
 ])
 
 
-def mse(row: Row) -> Row:
-    d = row.asDict()
-    _mse = 0.0
-    if d['Sales_Pred'] is None:
-        print("'Sales_Pred'=None")
-        _mse = 0
-    elif d['sales'] is None:
-        _mse = d['Sales_Pred'] ** 2
-    else:
-        _mse = (d['Sales_Pred'] - d['sales']) ** 2
-    d['mse'] = _mse
-    return Row(**d)
-
-
-def keyvalues(row: Row) -> ((str, str), float):
-    d = row.asDict()
-    key = (d["store_id"], d["dept_id"], d["year"])
-    return key, d["mse"]
+def astraining(row: Row) -> Row:
+    df = row.asDict()
+    del df['Sales_Pred']
+    del df['sales']
+    sales = row.asDict()['sales']
+    return Row(label=sales, features=list(df.values()))
 
 
 p = str(Path(datadir, "Sales5_Ab2011_InklPred.csv"))
 print(f"Reading: '{p}'")
 
 train: DataFrame = spark.read.csv(p, header='true', schema=schema)
-t: RDD = train.rdd
+t3 = train.rdd \
+    .filter(lambda r: r["sales"] is not None) \
+    .map(astraining)
 
-t3 = t.take(5)
-
-for r in t3:
-    print(r)
-
+gbt = GBTRegressor(maxIter=10)
+df = spark.createDataFrame(t3)
+df.show()
+gbt.fit(df)
+print("------------------------- R E A D Y --------------------------------")

@@ -23,6 +23,8 @@ print(f"Reading: '{p}'")
 # Load and parse the data file, converting it to a DataFrame.
 data = spark.read.format("libsvm").load(p)
 
+data.show()
+
 # Automatically identify categorical features, and index them.
 # Set maxCategories so features with > 4 distinct values are treated as continuous.
 featureIndexer = \
