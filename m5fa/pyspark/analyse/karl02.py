@@ -4,6 +4,7 @@ from pathlib import Path
 import pyspark.sql.types as T
 from pyspark import Row
 from pyspark.ml.regression import GBTRegressor
+from pyspark.mllib.linalg import Vectors
 from pyspark.sql import DataFrame, SparkSession
 
 spark = SparkSession.builder \
@@ -31,24 +32,36 @@ schema = T.StructType([
 ])
 
 
-def astraining(row: Row) -> Row:
-    df = row.asDict()
-    del df['Sales_Pred']
-    del df['sales']
-    sales = row.asDict()['sales']
-    return Row(label=sales, features=list(df.values()))
-
-
 p = str(Path(datadir, "Sales5_Ab2011_InklPred.csv"))
 print(f"Reading: '{p}'")
 
 train: DataFrame = spark.read.csv(p, header='true', schema=schema)
-t3 = train.rdd \
-    .filter(lambda r: r["sales"] is not None) \
-    .map(astraining)
+rows = train.rdd.take(5)
+for r in rows:
+    dn = r["sales"]
+    d = r.asDict()
+    v = list(d.values())
+    print(v)
+    print(type(v))
 
-gbt = GBTRegressor(maxIter=10)
-df = spark.createDataFrame(t3)
-df.show()
-gbt.fit(df)
 print("------------------------- R E A D Y --------------------------------")
+
+
+def train(df: DataFrame):
+
+    def astraining(row: Row) -> Row:
+        df = row.asDict()
+        del df['Sales_Pred']
+        del df['sales']
+        sales = row.asDict()['sales']
+        return Row(label=sales, features=list(df.values()))
+
+    t3 = train.rdd \
+        .filter(lambda r: r["sales"] is not None) \
+        .map(astraining)
+
+    gbt = GBTRegressor(maxIter=10)
+    df = spark.createDataFrame(t3)
+    df.show()
+    gbt.fit(df)
+    print("----------- after fit ------------")
