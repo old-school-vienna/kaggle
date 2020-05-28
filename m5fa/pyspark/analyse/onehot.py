@@ -9,14 +9,14 @@ spark = SparkSession.builder \
     .getOrCreate()
 
 df = spark.createDataFrame([
-    ("A", "X"),
-    ("A", "Y"),
-    ("A", "Y"),
-    ("B", "Z"),
-    ("B", "X"),
-    ("A", "Z"),
-    ("B", "Y"),
-], ["avar", "xvar"])
+    ("dummy 0", 0, "A", "X"),
+    ("dummy 1", 1, "A", "X"),
+    ("dummy 2", 2, "B", "Y"),
+    ("dummy 3", 3, "A", "X"),
+    ("dummy 4", 4, "A", "Y"),
+    ("dummy 5", 5, "B", "X"),
+    ("dummy 6", 6, "A", "Z"),
+], ["dummy", "i", "avar", "xvar"])
 
 stages = []
 
