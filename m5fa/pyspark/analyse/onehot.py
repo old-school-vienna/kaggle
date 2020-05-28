@@ -20,12 +20,14 @@ df = spark.createDataFrame([
 
 stages = []
 
-stages += [StringIndexer(inputCol="avar",
-                         outputCol="iavar")]
-stages += [StringIndexer(inputCol="xvar",
-                         outputCol="ixvar")]
-stages += [OneHotEncoderEstimator(inputCols=["iavar", "ixvar"],
-                                 outputCols=["vavar", "vxvar"])]
+catvars = ["avar", "xvar"]
+for v in catvars:
+    stages += [StringIndexer(inputCol=v,
+                             outputCol=f"i{v}")]
+ohin = [f"i{v}" for v in catvars]
+ohout = [f"v{v}" for v in catvars]
+stages += [OneHotEncoderEstimator(inputCols=ohin,
+                                  outputCols=ohout)]
 
 pip = Pipeline(stages=stages)
 pipm = pip.fit(df)
