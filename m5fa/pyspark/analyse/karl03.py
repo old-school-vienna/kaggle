@@ -6,7 +6,44 @@ import pyspark.sql.types as T
 import pyspark.sql.functions as F
 from pyspark.ml import Pipeline
 from pyspark.ml.feature import StringIndexer, OneHotEncoderEstimator, VectorAssembler
+from pyspark.ml.regression import LinearRegression
 from pyspark.sql import DataFrame, SparkSession
+from pyspark import Row
+
+
+def nullrows_cnt(df: DataFrame) -> int:
+    return df.rdd \
+        .map(nulls) \
+        .filter(lambda row: row['nullcnt'] > 0) \
+        .count()
+
+def prepro(s5: DataFrame) -> DataFrame:
+    stages = []
+
+    catvars = ['dept_id', 'item_id', 'store_id', 'wday']
+    for v in catvars:
+        stages += [StringIndexer(inputCol=v,
+                                 outputCol=f"i{v}")]
+    stages += [OneHotEncoderEstimator(inputCols=[f"i{v}" for v in catvars],
+                                      outputCols=[f"v{v}" for v in catvars])]
+    stages += [VectorAssembler(inputCols=['vwday', 'vitem_id', 'vdept_id', 'vstore_id', 'flag_ram',
+                                          'snap', 'dn', 'month', 'year'],
+                               outputCol='features')]
+
+    pip: Pipeline = Pipeline(stages=stages)
+    pipm = pip.fit(s5)
+    dft: DataFrame = pipm.transform(s5)
+    return dft.drop('idept_id', 'iitem_id', 'istore_id', 'iwday', 'vdept_id', 'vtem_id', 'vstore_id', 'vwday')
+
+
+def nulls(row: Row) -> Row:
+    d = row.asDict()
+    _cnt = 0
+    for _var in d.keys():
+        if d[_var] is None:
+            _cnt += 1
+    d['nullcnt'] = _cnt
+    return Row(**d)
 
 
 def run():
@@ -36,35 +73,30 @@ def run():
     p = str(Path(datadir, "Sales5_Ab2011_InklPred.csv"))
     print(f"Reading: '{p}'")
 
-    train: DataFrame = spark.read.csv(p, header='true', schema=schema) \
-        .withColumn("label", F.col('sales'))
-    
+    sales5: DataFrame = spark.read.csv(p, header='true', schema=schema) \
+        .withColumn("label", F.col('sales')) \
+        .where(F.col("label").isNotNull())
 
-    catvars = ['dept_id', 'item_id', 'store_id', 'wday']
-
-    stages = []
-
-    for v in catvars:
-        stages += [StringIndexer(inputCol=v,
-                                 outputCol=f"i{v}")]
-    ohin = [f"i{v}" for v in catvars]
-    ohout = [f"v{v}" for v in catvars]
-    stages += [OneHotEncoderEstimator(inputCols=ohin,
-                                      outputCols=ohout)]
-    stages += [VectorAssembler(inputCols=['vwday', 'vitem_id', 'vdept_id', 'vstore_id', 'flag_ram',
-                                          'snap', 'dn', 'month', 'year'],
-                               outputCol='features')]
-
-    pip = Pipeline(stages=stages)
-    pipm = pip.fit(train)
-
-    dft: DataFrame = pipm.transform(train)
-    dft.drop('idept_id', 'iitem_id', 'istore_id', 'iwday', 'vdept_id', 'vtem_id', 'vstore_id', 'vwday').show()
+    df = prepro(sales5)
 
 
-start = time.time()
-run()
-end = time.time()
-elapsed = end - start
-elapseds = time.strftime("%H:%M:%S", time.gmtime(elapsed))
-print(f"------------------------- R E A D Y ------------ {elapseds} --------------------")
+
+#    some = nullrows.take(50)
+#    if len(some) == 0:
+#        print(f"--- no null entries")
+#    else: 
+#        for nr in some:
+#            print(f"--- nr {nr}")
+
+def main():
+    start = time.time()
+    run()
+    end = time.time()
+    elapsed = end - start
+    elapseds = time.strftime("%H:%M:%S", time.gmtime(elapsed))
+    print(f"------------------------- R E A D Y ------------ {elapseds} --------------------")
+    input("Press Enter to continue...")
+
+
+if __name__ == '__main__':
+    main()
