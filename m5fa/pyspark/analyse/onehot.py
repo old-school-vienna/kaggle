@@ -5,7 +5,7 @@ from pyspark.ml.feature import StringIndexer
 
 spark = SparkSession.builder \
     .appName("karl01") \
-    .config("spark.driver.memory", "12g") \
+    .config("spark.driver.memory", "25g") \
     .getOrCreate()
 
 df = spark.createDataFrame([

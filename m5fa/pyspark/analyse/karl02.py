@@ -4,12 +4,10 @@ from pathlib import Path
 import pyspark.sql.types as T
 from pyspark import Row
 from pyspark.ml.regression import GBTRegressor
-from pyspark.mllib.linalg import Vectors
 from pyspark.sql import DataFrame, SparkSession
 
 spark = SparkSession.builder \
     .appName("karl02") \
-    .config("spark.driver.memory", "12g") \
     .getOrCreate()
 
 datadir: str = os.getenv("DATADIR")

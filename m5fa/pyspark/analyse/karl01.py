@@ -8,7 +8,6 @@ from pyspark.sql import DataFrame, SparkSession
 
 spark = SparkSession.builder \
     .appName("karl01") \
-    .config("spark.driver.memory", "12g") \
     .getOrCreate()
 
 datadir: str = os.getenv("DATADIR")
