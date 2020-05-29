@@ -1,5 +1,5 @@
 from pyspark.ml import Pipeline
-from pyspark.ml.feature import OneHotEncoderEstimator
+from pyspark.ml.feature import OneHotEncoderEstimator, VectorAssembler
 from pyspark.sql import SparkSession
 from pyspark.ml.feature import StringIndexer
 
@@ -13,9 +13,9 @@ df = spark.createDataFrame([
     ("dummy 1", 1, "A", "X"),
     ("dummy 2", 2, "B", "Y"),
     ("dummy 3", 3, "A", "X"),
-    ("dummy 4", 4, "A", "Y"),
+    ("dummy 4", 4, "D", "Y"),
     ("dummy 5", 5, "B", "X"),
-    ("dummy 6", 6, "A", "Z"),
+    ("dummy 6", 6, "C", "Z"),
 ], ["dummy", "i", "avar", "xvar"])
 
 stages = []
@@ -28,6 +28,9 @@ ohin = [f"i{v}" for v in catvars]
 ohout = [f"v{v}" for v in catvars]
 stages += [OneHotEncoderEstimator(inputCols=ohin,
                                   outputCols=ohout)]
+
+stages += [VectorAssembler(inputCols=['vavar', 'vxvar', 'i'],
+                           outputCol='features')]
 
 pip = Pipeline(stages=stages)
 pipm = pip.fit(df)

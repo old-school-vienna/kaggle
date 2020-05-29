@@ -3,8 +3,9 @@ import time
 from pathlib import Path
 
 import pyspark.sql.types as T
+import pyspark.sql.functions as F
 from pyspark.ml import Pipeline
-from pyspark.ml.feature import StringIndexer, OneHotEncoderEstimator
+from pyspark.ml.feature import StringIndexer, OneHotEncoderEstimator, VectorAssembler
 from pyspark.sql import DataFrame, SparkSession
 
 
@@ -35,10 +36,11 @@ def run():
     p = str(Path(datadir, "Sales5_Ab2011_InklPred.csv"))
     print(f"Reading: '{p}'")
 
-    train: DataFrame = spark.read.csv(p, header='true', schema=schema)
-    # apply dummy variables
+    train: DataFrame = spark.read.csv(p, header='true', schema=schema) \
+        .withColumn("label", F.col('sales'))
+    
 
-    catvars = ['dept_id', 'item_id', 'wday']
+    catvars = ['dept_id', 'item_id', 'store_id', 'wday']
 
     stages = []
 
@@ -49,12 +51,15 @@ def run():
     ohout = [f"v{v}" for v in catvars]
     stages += [OneHotEncoderEstimator(inputCols=ohin,
                                       outputCols=ohout)]
+    stages += [VectorAssembler(inputCols=['vwday', 'vitem_id', 'vdept_id', 'vstore_id', 'flag_ram',
+                                          'snap', 'dn', 'month', 'year'],
+                               outputCol='features')]
 
     pip = Pipeline(stages=stages)
     pipm = pip.fit(train)
 
-    dft = pipm.transform(train)
-    dft.show()
+    dft: DataFrame = pipm.transform(train)
+    dft.drop('idept_id', 'iitem_id', 'istore_id', 'iwday', 'vdept_id', 'vtem_id', 'vstore_id', 'vwday').show()
 
 
 start = time.time()
