@@ -17,6 +17,7 @@ def nullrows_cnt(df: DataFrame) -> int:
         .filter(lambda row: row['nullcnt'] > 0) \
         .count()
 
+
 def prepro(s5: DataFrame) -> DataFrame:
     stages = []
 
@@ -36,6 +37,20 @@ def prepro(s5: DataFrame) -> DataFrame:
     return dft.drop('idept_id', 'iitem_id', 'istore_id', 'iwday', 'vdept_id', 'vtem_id', 'vstore_id', 'vwday')
 
 
+def process(sales5: DataFrame):
+    df = prepro(sales5)
+    train = df \
+        .where(F.col("label").isNotNull())
+    test = df \
+        .where(F.col("label").isNull())
+
+    lr = LinearRegression()
+    model = lr.fit(train)
+
+    pred = model.transform(test)
+    pred.show()
+
+
 def nulls(row: Row) -> Row:
     d = row.asDict()
     _cnt = 0
@@ -48,7 +63,7 @@ def nulls(row: Row) -> Row:
 
 def run():
     spark = SparkSession.builder \
-        .appName("karl02") \
+        .appName("karl03") \
         .getOrCreate()
 
     datadir: str = os.getenv("DATADIR")
@@ -70,23 +85,25 @@ def run():
         T.StructField('Sales_Pred', T.DoubleType(), True)
     ])
 
-    p = str(Path(datadir, "Sales5_Ab2011_InklPred.csv"))
-    print(f"Reading: '{p}'")
+    csv_path = str(Path(datadir, "Sales5_Ab2011_InklPred.csv"))
+    print(f"--- Reading: '{csv_path}'")
 
-    sales5: DataFrame = spark.read.csv(p, header='true', schema=schema) \
-        .withColumn("label", F.col('sales')) \
-        .where(F.col("label").isNotNull())
+    sales5: DataFrame = spark.read.csv(csv_path, header='true', schema=schema) \
+        .withColumn("label", F.col('sales'))
 
-    df = prepro(sales5)
+    orig_path = str(Path(datadir, "Sales5_orig.parquet"))
+    print(f"--- Writing: '{orig_path}'")
+    sales5.write \
+        .format("parquet") \
+        .mode("overwrite") \
+        .save(orig_path)
 
+    print(f"--- Reading: '{orig_path}'")
+    df1: DataFrame = spark.read \
+        .parquet(orig_path)
 
+    df1.show()
 
-#    some = nullrows.take(50)
-#    if len(some) == 0:
-#        print(f"--- no null entries")
-#    else: 
-#        for nr in some:
-#            print(f"--- nr {nr}")
 
 def main():
     start = time.time()
