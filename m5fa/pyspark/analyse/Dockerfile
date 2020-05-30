@@ -31,5 +31,8 @@ COPY *.py ./
 COPY ./conf/* /opt/spark/conf/
 
 RUN echo "export PATH=/opt/spark/bin:$PATH" >> ~/.bashrc
+RUN echo "alias cdp='cd /opt/project'" >> ~/.bashrc
+RUN echo "alias cdd='cd /opt/data'" >> ~/.bashrc
+RUN echo "alias sps='/opt/spark/bin/spark-submit'" >> ~/.bashrc
 
 EXPOSE 4040
