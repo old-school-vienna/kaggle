@@ -29,6 +29,7 @@ def test_nulls_b():
     r = Row(**d)
     assert nulls(r)['nullcnt'] == 1, "there is 1 'None'"
 
+
 def test_nulls_all():
     d = {
         'a': None,
