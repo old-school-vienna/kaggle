@@ -11,7 +11,7 @@ docker run -it \
     -v /home/wwagner4/prj/kaggle/m5fa/pyspark/analyse:/opt/project \
     -v /data/kaggle:/opt/data \
     -p 4040:4040 \
-    myspark bash
+    myspark37 bash
 ```
 wallace
 ```
@@ -20,7 +20,7 @@ docker run -it \
     -v /Users/wwagner4/prj/kaggle/m5fa/pyspark/analyse:/opt/project \
     -v /Users/wwagner4/work/kaggle:/opt/data \
     -p 4040:4040 \
-    myspark bash
+    myspark37 bash
 ```
 work
 ```
@@ -29,7 +29,7 @@ docker run -it \
     -v /opt/wwa/prj/kaggle/m5fa/pyspark/analyse:/opt/project \
     -v /opt/wwa/work/kaggle:/opt/data \
     -p 4040:4040 \
-    myspark bash
+    myspark37 bash
 ```
 
 ### Data

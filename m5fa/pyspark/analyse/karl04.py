@@ -106,7 +106,7 @@ def run():
         raise ValueError("Environment variable DATADIR must be defined")
     print(f"datadir = '{datadir}'")
 
-    ppnam = "s5_02"
+    ppnam = "s5_01"
     pppath = Path(datadir, f"{ppnam}.parquet")
     if not pppath.exists():
         preprocessing(spark, pppath, datadir)
