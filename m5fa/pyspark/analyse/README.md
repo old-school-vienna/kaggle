@@ -1,7 +1,7 @@
 ## Analyse data using pyspark
 ### Docker
 ```
-docker build -t myspark .
+docker build -t myspark37 .
 ```
 Add the second mount if original is a link
 ben
