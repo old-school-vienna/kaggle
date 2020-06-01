@@ -2,7 +2,7 @@ from pathlib import Path
 
 import matplotlib
 import matplotlib.pyplot as plt
-from matplotlib.axis import Axis
+from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 
 print(matplotlib.get_backend())
@@ -17,8 +17,8 @@ pplot = pbase / "plot"
 if not pplot.exists():
     pplot.mkdir()
 
-
-ax: Axis = fig.add_subplot(1, 1, 1)
+ax: Axes = fig.add_subplot(1, 1, 1)
+print(f"--- type ax {type(ax)}")
 ax.set_title("Empty title")
 ax.plot(x, y)
 
