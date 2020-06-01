@@ -1,6 +1,7 @@
 from pyspark.shell import spark, sc
+from pyspark.sql import DataFrame
 
-from pyspark.sql.functions import DataFrame, explode, split
+from pyspark.sql.functions import explode, split
 
 sc.setLogLevel("ERROR")
 textFile: DataFrame = spark.read.text("data/test.txt")
@@ -12,8 +13,8 @@ print(f"Schema  textFile: {textFile.schema}")
 lines = textFile.value
 slines = split(lines, "\s+")
 a = explode(slines).alias("word")
-wordCounts: DataFrame = textFile.select(a)\
+wordCounts: DataFrame = textFile.select(a) \
     .groupBy("word") \
     .count() \
-    .sort("word", ascending=False) 
+    .sort("word", ascending=False)
 print(f"words   textFile: {wordCounts.collect()}")
