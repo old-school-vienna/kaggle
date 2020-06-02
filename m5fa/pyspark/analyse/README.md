@@ -52,3 +52,6 @@ Example call
 ```$bash
 sps --executor-memory 25G --driver-memory 25g --driver-java-options -Duser.timezone=CET analyse.py 
 ```
+```$bash
+sps --executor-memory 10G --driver-memory 10g --driver-java-options -Duser.timezone=CET analyse.py 
+```
