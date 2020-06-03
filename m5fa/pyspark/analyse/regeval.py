@@ -9,7 +9,6 @@ from pyspark.sql import SparkSession
 
 spark = SparkSession.builder \
     .appName("regval") \
-    .config("spark.driver.memory", "12g") \
     .getOrCreate()
 
 datadir: str = os.getenv("DATADIR")
@@ -17,18 +16,11 @@ if datadir is None:
     raise ValueError("Environment variable DATADIR must be defined")
 print(f"datadir = '{datadir}'")
 
-p = str(Path(datadir, "sample_libsvm_data.txt"))
+p = Path(datadir, "s5_01.parquet")
 print(f"Reading: '{p}'")
 
 # Load and parse the data file, converting it to a DataFrame.
-data = spark.read.format("libsvm").load(p)
-
-data.show()
-
-# Automatically identify categorical features, and index them.
-# Set maxCategories so features with > 4 distinct values are treated as continuous.
-featureIndexer = \
-    VectorIndexer(inputCol="features", outputCol="indexedFeatures", maxCategories=4).fit(data)
+data = spark.read.parquet(p)
 
 # Split the data into training and test sets (30% held out for testing)
 (trainingData, testData) = data.randomSplit([0.7, 0.3])
@@ -37,7 +29,7 @@ featureIndexer = \
 gbt = GBTRegressor(featuresCol="indexedFeatures", maxIter=10)
 
 # Chain indexer and GBT in a Pipeline
-pipeline = Pipeline(stages=[featureIndexer, gbt])
+pipeline = Pipeline(stages=[gbt])
 
 # Train model.  This also runs the indexer.
 model = pipeline.fit(trainingData)
