@@ -1,18 +1,15 @@
 import os
 import time
 from pathlib import Path
-from typing import Tuple, Callable
 
-import matplotlib.pyplot as plt
 import pyspark.sql.types as t
 import pyspark.sql.functions as f
-from operator import add
-from matplotlib.axes import Axes
-from matplotlib.figure import Figure
-from pyspark import RDD
 from pyspark.ml import Pipeline
 from pyspark.ml.feature import StringIndexer, OneHotEncoderEstimator, VectorAssembler
 from pyspark.sql import DataFrame, SparkSession
+from pyspark.ml.evaluation import RegressionEvaluator
+from pyspark.ml.regression import LinearRegression
+from pyspark.ml.tuning import ParamGridBuilder, TrainValidationSplit
 
 
 def preprocessing(spark: SparkSession, pppath: Path, datadir: Path):
@@ -64,14 +61,11 @@ def preprocessing(spark: SparkSession, pppath: Path, datadir: Path):
 
 
 def pipeline(spark: SparkSession, pppath: Path, datadir: Path):
-    from pyspark.ml.evaluation import RegressionEvaluator
-    from pyspark.ml.regression import LinearRegression
-    from pyspark.ml.tuning import ParamGridBuilder, TrainValidationSplit
-
     print(f"--- Reading: '{pppath}'")
 
     pp: DataFrame = spark.read.parquet(str(pppath)) \
-        .filter("label is not null")
+        .filter("label is not null") \
+        .limit(500)
 
     # Prepare training and test data.
     train, test = pp.randomSplit([0.9, 0.1], seed=12345)
@@ -81,28 +75,33 @@ def pipeline(spark: SparkSession, pppath: Path, datadir: Path):
     # We use a ParamGridBuilder to construct a grid of parameters to search over.
     # TrainValidationSplit will try all combinations of values and determine best model using
     # the evaluator.
-    paramGrid = ParamGridBuilder()\
+    paramGrid = ParamGridBuilder() \
         .addGrid(lr.regParam, [0.1, 0.01]) \
-        .addGrid(lr.fitIntercept, [False, True])\
-        .addGrid(lr.elasticNetParam, [0.0, 0.5, 1.0])\
+        .addGrid(lr.fitIntercept, [False, True]) \
+        .addGrid(lr.elasticNetParam, [0.0, 0.5, 1.0]) \
         .build()
 
     # In this case the estimator is simply the linear regression.
     # A TrainValidationSplit requires an Estimator, a set of Estimator ParamMaps, and an Evaluator.
     tvs = TrainValidationSplit(estimator=lr,
-                            estimatorParamMaps=paramGrid,
-                            evaluator=RegressionEvaluator(),
-                            # 80% of the data will be used for training, 20% for validation.
-                            trainRatio=0.8)
+                               estimatorParamMaps=paramGrid,
+                               evaluator=RegressionEvaluator(),
+                               # 80% of the data will be used for training, 20% for validation.
+                               trainRatio=0.8)
 
     # Run TrainValidationSplit, and choose the best set of parameters.
     model = tvs.fit(train)
 
     # Make predictions on test data. model is the model with combination of parameters
     # that performed best.
-    model.transform(test)\
-        .select("features", "label", "prediction")\
-        .show()
+    predictions = model.transform(test) \
+        .select("features", "label", "prediction")
+
+    # Select (prediction, true label) and compute test error
+    evaluator = RegressionEvaluator(
+        labelCol="label", predictionCol="prediction", metricName="rmse")
+    rmse = evaluator.evaluate(predictions)
+    print("Root Mean Squared Error (RMSE) on test data = %g" % rmse)
 
 
 def run(spark: SparkSession):
@@ -121,7 +120,7 @@ def run(spark: SparkSession):
 def main():
     start = time.time()
     spark = SparkSession.builder \
-        .appName("analyse") \
+        .appName(__name__) \
         .getOrCreate()
     run(spark)
     end = time.time()

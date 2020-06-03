@@ -1,10 +1,9 @@
+import os
 from pathlib import Path
 
-import os
 from pyspark.ml import Pipeline
-from pyspark.ml.regression import GBTRegressor
-from pyspark.ml.feature import VectorIndexer
 from pyspark.ml.evaluation import RegressionEvaluator
+from pyspark.ml.regression import GBTRegressor
 from pyspark.sql import SparkSession
 
 spark = SparkSession.builder \
@@ -20,7 +19,8 @@ p = Path(datadir, "s5_01.parquet")
 print(f"Reading: '{p}'")
 
 # Load and parse the data file, converting it to a DataFrame.
-data = spark.read.parquet(str(p))
+data = spark.read.parquet(str(p)) \
+    .filter("label is not null")
 
 # Split the data into training and test sets (30% held out for testing)
 (trainingData, testData) = data.randomSplit([0.7, 0.3])
@@ -36,9 +36,6 @@ model = pipeline.fit(trainingData)
 
 # Make predictions.
 predictions = model.transform(testData)
-
-# Select example rows to display.
-predictions.select("prediction", "label", "features").show(5)
 
 # Select (prediction, true label) and compute test error
 evaluator = RegressionEvaluator(
