@@ -64,12 +64,14 @@ def preprocessing(spark: SparkSession, pppath: Path, datadir: Path):
 
 
 def pipeline(spark: SparkSession, pppath: Path, datadir: Path):
-    print(f"--- Reading: '{pppath}'")
-
-    pp: DataFrame = spark.read.parquet(str(pppath))
     from pyspark.ml.evaluation import RegressionEvaluator
     from pyspark.ml.regression import LinearRegression
     from pyspark.ml.tuning import ParamGridBuilder, TrainValidationSplit
+
+    print(f"--- Reading: '{pppath}'")
+
+    pp: DataFrame = spark.read.parquet(str(pppath)) \
+        .filter("label is not null")
 
     # Prepare training and test data.
     train, test = pp.randomSplit([0.9, 0.1], seed=12345)
