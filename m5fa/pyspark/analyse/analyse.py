@@ -193,7 +193,6 @@ def main():
     elapsed = end - start
     elapseds = time.strftime("%H:%M:%S", time.gmtime(elapsed))
     print(f"------------------------- R E A D Y ------------ {elapseds} --------------------")
-    input("Press Enter to continue...")
     spark.stop()
     exit(0)
 

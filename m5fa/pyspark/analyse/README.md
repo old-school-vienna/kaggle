@@ -12,6 +12,34 @@ docker run -it \
     -v /data/kaggle:/opt/data \
     -p 4040:4040 \
     myspark37 bash
+
+
+    docker run \
+    --rm \
+    --name sp \
+    -e DATADIR=/opt/data \
+    -v /home/wwagner4/prj/kaggle/m5fa/pyspark/analyse:/opt/project \
+    -v /data/kaggle:/opt/data \
+    -p 4040:4040 \
+    myspark37 /opt/spark/bin/spark-submit --executor-memory 25G --driver-memory 25g --driver-java-options -Duser.timezone=CET \
+        /opt/project/analyse.py &
+```
+bob
+```
+docker run -it \
+    -e DATADIR=/opt/data \
+    -v /home/wwagner4/prj/kaggle/m5fa/pyspark/analyse:/opt/project \
+    -v /home/wwagner4/work/kaggle:/opt/data \
+    -p 4040:4040 \
+    myspark37 bash
+
+docker run \
+    -e DATADIR=/opt/data \
+    -v /home/wwagner4/prj/kaggle/m5fa/pyspark/analyse:/opt/project \
+    -v /home/wwagner4/work/kaggle:/opt/data \
+    -p 4040:4040 \
+    myspark37 /opt/spark/bin/spark-submit --executor-memory 6G --driver-memory 6g --driver-java-options -Duser.timezone=CET \
+        /opt/project/analyse.py &
 ```
 wallace
 ```
