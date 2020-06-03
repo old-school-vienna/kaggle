@@ -66,7 +66,7 @@ def preprocessing(spark: SparkSession, pppath: Path, datadir: Path):
 def pipeline(spark: SparkSession, pppath: Path, datadir: Path):
     print(f"--- Reading: '{pppath}'")
 
-    pp: DataFrame = spark.read.parcet(str(csv_path))
+    pp: DataFrame = spark.read.parquet(str(pppath))
     pp.show()
 
 
