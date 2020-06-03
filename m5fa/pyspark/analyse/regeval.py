@@ -20,13 +20,13 @@ p = Path(datadir, "s5_01.parquet")
 print(f"Reading: '{p}'")
 
 # Load and parse the data file, converting it to a DataFrame.
-data = spark.read.parquet(p)
+data = spark.read.parquet(str(p))
 
 # Split the data into training and test sets (30% held out for testing)
 (trainingData, testData) = data.randomSplit([0.7, 0.3])
 
 # Train a GBT model.
-gbt = GBTRegressor(featuresCol="indexedFeatures", maxIter=10)
+gbt = GBTRegressor(maxIter=10)
 
 # Chain indexer and GBT in a Pipeline
 pipeline = Pipeline(stages=[gbt])
