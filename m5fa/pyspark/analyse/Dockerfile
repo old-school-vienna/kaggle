@@ -1,13 +1,19 @@
 FROM ubuntu:19.10
 
 #RUN add-apt-repository ppa:openjdk-r/ppa
+
+RUN apt-get update
+RUN apt-get install -y software-properties-common 
+RUN apt-get add-repository universe
+RUN apt-get add-repository multiverse
 RUN apt-get update
 RUN apt-get install -y openjdk-8-jdk
-RUN apt install -y python3-pip
+RUN apt-get install -y python3-pip
 RUN apt-get install -y python3.7
 RUN apt-get install -y pipenv
 RUN apt-get install -y wget
 RUN apt-get install -y vim
+RUN apt-get install -y libgfortran
 
 RUN wget -O spark.tgz https://mirror.klaus-uwe.me/apache/spark/spark-2.4.5/spark-2.4.5-bin-hadoop2.7.tgz
 RUN mkdir /opt/spark
