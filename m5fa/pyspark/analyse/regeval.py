@@ -43,5 +43,3 @@ evaluator = RegressionEvaluator(
 rmse = evaluator.evaluate(predictions)
 print("Root Mean Squared Error (RMSE) on test data = %g" % rmse)
 
-gbtModel = model.stages[1]
-print(gbtModel)  # summary only

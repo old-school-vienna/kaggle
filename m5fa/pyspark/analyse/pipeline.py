@@ -65,7 +65,6 @@ def pipeline(spark: SparkSession, pppath: Path, datadir: Path):
 
     pp: DataFrame = spark.read.parquet(str(pppath)) \
         .filter("label is not null") \
-        .limit(500)
 
     # Prepare training and test data.
     train, test = pp.randomSplit([0.9, 0.1], seed=12345)
