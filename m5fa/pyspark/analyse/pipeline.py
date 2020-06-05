@@ -1,5 +1,6 @@
 import os
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +12,26 @@ from pyspark.ml.feature import StringIndexer, OneHotEncoderEstimator, VectorAsse
 from pyspark.ml.regression import GeneralizedLinearRegression
 from pyspark.ml.tuning import ParamGridBuilder, TrainValidationSplit
 from pyspark.sql import DataFrame, SparkSession
+
+
+@dataclass
+class Esti:
+    data: DataFrame
+    esti: Estimator
+    desc: str
+    id: str
+
+
+@dataclass
+class PipResult:
+    rmse: float
+    hparams: dict
+
+
+@dataclass
+class EstiResult:
+    esti: Esti
+    pip_result: PipResult
 
 
 def preprocessing(spark: SparkSession, pppath: Path, datadir: Path):
@@ -61,7 +82,7 @@ def preprocessing(spark: SparkSession, pppath: Path, datadir: Path):
         .save(str(pppath))
 
 
-def pipeline1(pp: DataFrame, esti: Estimator) -> (float, dict):
+def pipeline1(pp: DataFrame, esti: Estimator) -> PipResult:
     marams = {
         'p1': 298347,
         'hste_la_vista': 'H',
@@ -69,10 +90,10 @@ def pipeline1(pp: DataFrame, esti: Estimator) -> (float, dict):
         'value_up': 8.2347,
         'nix': None
     }
-    return 7.9238429847, marams
+    return PipResult(7.9238429847, marams)
 
 
-def pipeline(pp: DataFrame, esti: Estimator) -> (float, dict):
+def pipeline(pp: DataFrame, esti: Estimator) -> PipResult:
     # Prepare training and test data.
     train, test = pp.randomSplit([0.9, 0.1], seed=12345)
 
@@ -107,7 +128,7 @@ def pipeline(pp: DataFrame, esti: Estimator) -> (float, dict):
     rmse = evaluator.evaluate(predictions)
 
     print("Root Mean Squared Error (RMSE) on test data = %g" % rmse)
-    return rmse, param_map
+    return PipResult(rmse, param_map)
 
 
 def read_data(spark: SparkSession) -> DataFrame:
@@ -132,29 +153,29 @@ def main():
         .getOrCreate()
     pp: DataFrame = read_data(spark)
     estis1 = [
-        (pp, GeneralizedLinearRegression(family='poisson', link='identity', maxIter=10, regParam=0.3),
-         "glr poisson identity"), "glrpi",
+        Esti(pp, GeneralizedLinearRegression(family='poisson', link='identity', maxIter=10, regParam=0.3),
+             "glr poisson identity", "glrpi"),
     ]
     estis2 = [
-        (pp, GeneralizedLinearRegression(family='gaussian', link='identity', maxIter=10, regParam=0.3),
-         "glr gaussian identity", "glrgi"),
-        (pp, GeneralizedLinearRegression(family='poisson', link='log', maxIter=10, regParam=0.3),
-         "glr poisson log", "glrpi"),
-        (pp, GeneralizedLinearRegression(family='binomial', link='logit', maxIter=10, regParam=0.3),
-         "glr gamma identity", "glrgai"),
+        Esti(pp, GeneralizedLinearRegression(family='gaussian', link='identity', maxIter=10, regParam=0.3),
+             "glr gaussian identity", "glrgi"),
+        Esti(pp, GeneralizedLinearRegression(family='poisson', link='log', maxIter=10, regParam=0.3),
+             "glr poisson log", "glrpi"),
+        Esti(pp, GeneralizedLinearRegression(family='binomial', link='logit', maxIter=10, regParam=0.3),
+             "glr gamma identity", "glrgai"),
     ]
-    reses = [(pipeline(t[0], t[1]), t[2], t[3]) for t in estis1]
+    reses = [EstiResult(e, pipeline1(e.data, e.esti)) for e in estis1]
     print()
     print(f"+------------------------------------------------+")
     print(f"|model                                |mse       |")
     print(f"|------------------------------------------------|")
     for res in reses:
-        print(f"|{res[1]:37}|{res[0][0]:10.4f}|")
+        print(f"|{res.esti.desc:37}|{res.pip_result.rmse:10.4f}|")
     print(f"+------------------------------------------------+")
     print()
     for res in reses:
-        print(f"Hyperparams: {res[1]}")
-        hpar: dict = res[0][1]
+        print(f"Hyperparams: {res.esti.desc}")
+        hpar: dict = res.pip_result.hparams
         print(f"+------------------------------------------------+")
         for k in hpar.keys():
             v = hpar[k]

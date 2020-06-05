@@ -1,5 +1,5 @@
 
-- use dataclasses
+
 - create a small dataset for testruns
 - serialice a model and try to return it from pipline
 - save returned model
@@ -8,3 +8,4 @@
 
 ------------------------------------------------------------
 - try if data classes are possible in 3.7
+- use dataclasses
