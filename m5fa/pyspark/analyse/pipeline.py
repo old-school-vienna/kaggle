@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pyspark.sql.types as t
 import pyspark.sql.functions as f
-from pyspark.ml import Pipeline
+from pyspark.ml import Pipeline, Estimator
 from pyspark.ml.feature import StringIndexer, OneHotEncoderEstimator, VectorAssembler
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.ml.evaluation import RegressionEvaluator
@@ -60,40 +60,37 @@ def preprocessing(spark: SparkSession, pppath: Path, datadir: Path):
         .save(str(pppath))
 
 
-def pipeline(spark: SparkSession, pppath: Path, datadir: Path):
-    print(f"--- Reading: '{pppath}'")
+def pipeline1(pp: DataFrame, esti: Estimator) -> float:
+    return 0.6475
 
-    pp: DataFrame = spark.read.parquet(str(pppath)) \
-        .filter("label is not null") \
 
+def pipeline(pp: DataFrame, esti: Estimator) -> float:
     # Prepare training and test data.
     train, test = pp.randomSplit([0.9, 0.1], seed=12345)
-
-    lr = LinearRegression(maxIter=10)
 
     # We use a ParamGridBuilder to construct a grid of parameters to search over.
     # TrainValidationSplit will try all combinations of values and determine best model using
     # the evaluator.
-    paramGrid = ParamGridBuilder() \
-        .addGrid(lr.regParam, [0.1, 0.01]) \
-        .addGrid(lr.fitIntercept, [False, True]) \
-        .addGrid(lr.elasticNetParam, [0.0, 0.5, 1.0]) \
+    param_grid = ParamGridBuilder() \
+        .addGrid(esti.regParam, [0.1, 0.01]) \
+        .addGrid(esti.fitIntercept, [False, True]) \
+        .addGrid(esti.elasticNetParam, [0.0, 0.5, 1.0]) \
         .build()
 
     # In this case the estimator is simply the linear regression.
     # A TrainValidationSplit requires an Estimator, a set of Estimator ParamMaps, and an Evaluator.
-    tvs = TrainValidationSplit(estimator=lr,
-                               estimatorParamMaps=paramGrid,
+    tvs = TrainValidationSplit(estimator=esti,
+                               estimatorParamMaps=param_grid,
                                evaluator=RegressionEvaluator(),
                                # 80% of the data will be used for training, 20% for validation.
                                trainRatio=0.8)
 
     # Run TrainValidationSplit, and choose the best set of parameters.
-    model = tvs.fit(train)
+    esti = tvs.fit(train)
 
     # Make predictions on test data. model is the model with combination of parameters
     # that performed best.
-    predictions = model.transform(test) \
+    predictions = esti.transform(test) \
         .select("features", "label", "prediction")
 
     # Select (prediction, true label) and compute test error
@@ -101,9 +98,10 @@ def pipeline(spark: SparkSession, pppath: Path, datadir: Path):
         labelCol="label", predictionCol="prediction", metricName="rmse")
     rmse = evaluator.evaluate(predictions)
     print("Root Mean Squared Error (RMSE) on test data = %g" % rmse)
+    return rmse
 
 
-def run(spark: SparkSession):
+def read_data(spark: SparkSession) -> DataFrame:
     datadir: Path = Path(os.getenv("DATADIR"))
     if datadir is None:
         raise ValueError("Environment variable DATADIR must be defined")
@@ -113,7 +111,9 @@ def run(spark: SparkSession):
     pppath = datadir / f"{ppnam}.parquet"
     if not pppath.exists():
         preprocessing(spark, pppath, datadir)
-    pipeline(spark, pppath, datadir)
+    print(f"--- Reading: '{pppath}'")
+    return spark.read.parquet(str(pppath)) \
+        .filter("label is not null")
 
 
 def main():
@@ -121,7 +121,10 @@ def main():
     spark = SparkSession.builder \
         .appName(__name__) \
         .getOrCreate()
-    run(spark)
+    pp: DataFrame = read_data(spark)
+    estis = [(pp, LinearRegression(maxIter=10), "lr max iter 10")]
+    mses = [(pipeline1(t[0], t[1]), t[2]) for t in estis]
+    print(mses)
     end = time.time()
     elapsed = end - start
     elapseds = time.strftime("%H:%M:%S", time.gmtime(elapsed))
