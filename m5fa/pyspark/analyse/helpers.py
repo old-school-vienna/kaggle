@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import Any
 
 import pyspark.sql.functions as sf
 from pyspark.sql import DataFrame, SparkSession
@@ -43,6 +44,21 @@ def create_small_dataframe():
         .limit(50)
     small = train.union(test)
     write(small, dd, "s5_01_small")
+
+
+def fval(value: Any, leng: int) -> str:
+    if value is None:
+        fstr = f"{{:{leng}}}"
+        return fstr.format('None')
+    if isinstance(value, int):
+        fstr = f"{{:{leng}d}}"
+        return fstr.format(value)
+    if isinstance(value, float):
+        fstr = f"{{:{leng}.3f}}"
+        return fstr.format(value)
+    else:
+        fstr = f"{{:{leng}}}"
+        return fstr.format(str(value))
 
 
 if __name__ == "__main__":

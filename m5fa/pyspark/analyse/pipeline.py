@@ -2,7 +2,7 @@ import os
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from pprint import pprint
 
 import pyspark.sql.functions as sfunc
 import pyspark.sql.types as stype
@@ -12,6 +12,8 @@ from pyspark.ml.feature import StringIndexer, OneHotEncoderEstimator, VectorAsse
 from pyspark.ml.regression import GeneralizedLinearRegression
 from pyspark.ml.tuning import ParamGridBuilder, TrainValidationSplit
 from pyspark.sql import DataFrame, SparkSession
+
+import helpers as hlp
 
 
 @dataclass
@@ -34,7 +36,7 @@ class EstiResult:
     pip_result: PipResult
 
 
-def preprocessing(spark: SparkSession, pppath: Path, datadir: Path):
+def prepro(spark: SparkSession, datadir: Path, nam: str):
     def prepro(s5: DataFrame) -> DataFrame:
         stages = []
         catvars = ['dept_id', 'item_id', 'store_id', 'wday']
@@ -75,11 +77,9 @@ def preprocessing(spark: SparkSession, pppath: Path, datadir: Path):
         .withColumn("label", sfunc.col('sales'))
 
     ppdf = prepro(sales5)
-    print(f"--- Writing: '{pppath}'")
-    ppdf.write \
-        .format("parquet") \
-        .mode("overwrite") \
-        .save(str(pppath))
+    print(f"--- Writing: '{nam}'")
+
+    hlp.write(ppdf, datadir, nam)
 
 
 def pipeline1(pp: DataFrame, esti: Estimator) -> PipResult:
@@ -131,19 +131,12 @@ def pipeline(pp: DataFrame, esti: Estimator) -> PipResult:
     return PipResult(rmse, param_map)
 
 
-def read_data(spark: SparkSession) -> DataFrame:
-    datadir: Path = Path(os.getenv("DATADIR"))
-    if datadir is None:
-        raise ValueError("Environment variable DATADIR must be defined")
-    print(f"datadir = '{datadir}'")
-
-    ppnam = "s5_01"
-    pppath = datadir / f"{ppnam}.parquet"
-    if not pppath.exists():
-        preprocessing(spark, pppath, datadir)
-    print(f"--- Reading: '{pppath}'")
-    return spark.read.parquet(str(pppath)) \
-        .filter("label is not null")
+def preprocessing():
+    spark = SparkSession.builder \
+        .appName(os.path.basename(__file__)) \
+        .getOrCreate()
+    prepro(spark, hlp.get_datadir(), "sp5_01")
+    spark.stop()
 
 
 def main():
@@ -151,12 +144,11 @@ def main():
     spark = SparkSession.builder \
         .appName(os.path.basename(__file__)) \
         .getOrCreate()
-    pp: DataFrame = read_data(spark)
-    estis1 = [
+    pp: DataFrame = hlp.read(spark, hlp.get_datadir(), "s5_01") \
+        .where(sfunc.col("label").isNotNull())
+    estis = [
         Esti(pp, GeneralizedLinearRegression(family='poisson', link='identity', maxIter=10, regParam=0.3),
              "glr poisson identity", "glrpi"),
-    ]
-    estis2 = [
         Esti(pp, GeneralizedLinearRegression(family='gaussian', link='identity', maxIter=10, regParam=0.3),
              "glr gaussian identity", "glrgi"),
         Esti(pp, GeneralizedLinearRegression(family='poisson', link='log', maxIter=10, regParam=0.3),
@@ -164,7 +156,7 @@ def main():
         Esti(pp, GeneralizedLinearRegression(family='binomial', link='logit', maxIter=10, regParam=0.3),
              "glr gamma identity", "glrgai"),
     ]
-    reses = [EstiResult(e, pipeline1(e.data, e.esti)) for e in estis1]
+    reses = [EstiResult(e, pipeline(e.data, e.esti)) for e in estis]
     print()
     print(f"+------------------------------------------------+")
     print(f"|model                                |mse       |")
@@ -176,11 +168,12 @@ def main():
     for res in reses:
         print(f"Hyperparams: {res.esti.desc}")
         hpar: dict = res.pip_result.hparams
-        print(f"+------------------------------------------------+")
-        for k in hpar.keys():
-            v = hpar[k]
-            print(f"|{k:37}|{fval(v, 10)}|")
-            print(f"+------------------------------------------------+")
+        pprint(hpar)
+#        print(f"+------------------------------------------------+")
+#        for k in hpar.keys():
+#            v = hpar[k]
+#            print(f"|{str(k):37}|{hlp.fval(v, 10)}|")
+#            print(f"+------------------------------------------------+")
         print()
     print()
     end = time.time()
@@ -188,23 +181,8 @@ def main():
     elapseds = time.strftime("%H:%M:%S", time.gmtime(elapsed))
     print(f"------------------------- R E A D Y ------------ {elapseds} --------------------")
     spark.stop()
-    exit(0)
-
-
-def fval(value: Any, leng: int) -> str:
-    if value is None:
-        fstr = f"{{:{leng}}}"
-        return fstr.format('None')
-    if isinstance(value, int):
-        fstr = f"{{:{leng}d}}"
-        return fstr.format(value)
-    if isinstance(value, float):
-        fstr = f"{{:{leng}.3f}}"
-        return fstr.format(value)
-    else:
-        fstr = f"{{:{leng}}}"
-        return fstr.format(str(value))
 
 
 if __name__ == '__main__':
     main()
+    # preprocessing()
