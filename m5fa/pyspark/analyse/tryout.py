@@ -22,12 +22,12 @@ def no_idea():
     print(f"len of short: {rdd_short.collect()}")
 
 
-@dataclass
-class X:
-    nam: str
-    cnt: int
+def dataclass_example():
+    @dataclass
+    class X:
+        nam: str
+        cnt: int
 
+    x = X(nam='hallo', cnt=11)
 
-x = X(nam='hallo', cnt=11)
-
-print(x)
+    print(x)

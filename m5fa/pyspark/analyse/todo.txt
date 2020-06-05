@@ -7,5 +7,6 @@
 - submit
 
 ------------------------------------------------------------
+- cleanup project
 - try if data classes are possible in 3.7
 - use dataclasses

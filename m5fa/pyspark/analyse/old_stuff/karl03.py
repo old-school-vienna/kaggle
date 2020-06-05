@@ -8,7 +8,6 @@ from pyspark.ml import Pipeline
 from pyspark.ml.feature import StringIndexer, OneHotEncoderEstimator, VectorAssembler
 from pyspark.ml.regression import LinearRegression
 from pyspark.sql import DataFrame, SparkSession
-from pyspark import Row
 
 
 def nullrows_cnt(df: DataFrame) -> int:
@@ -33,22 +32,43 @@ def prepro(s5: DataFrame) -> DataFrame:
 
     pip: Pipeline = Pipeline(stages=stages)
     pipm = pip.fit(s5)
-    df: DataFrame = pipm.transform(s5)
-    return df.drop('idept_id', 'iitem_id', 'istore_id', 'iwday', 'vdept_id', 'vtem_id', 'vstore_id', 'vwday')
+    dft: DataFrame = pipm.transform(s5)
+    return dft.drop('idept_id', 'iitem_id', 'istore_id', 'iwday', 'vdept_id', 'vtem_id', 'vstore_id', 'vwday')
 
 
-def nulls(row: Row) -> Row:
+def process(sales5: DataFrame):
+    df = prepro(sales5)
+    train = df \
+        .where(F.col("label").isNotNull())
+    test = df \
+        .where(F.col("label").isNull())
+
+    lr = LinearRegression()
+    model = lr.fit(train)
+
+    pred = model.transform(test)
+    pred.show()
+
+
+def nulls(row: T.Row) -> T.Row:
     d = row.asDict()
     _cnt = 0
     for _var in d.keys():
         if d[_var] is None:
             _cnt += 1
     d['nullcnt'] = _cnt
-    return Row(**d)
+    return T.Row(**d)
 
 
-def preprocessing(spark: SparkSession, pppath: Path, datadir: str):
-    print("--- preprocessing -----------------------")
+def run():
+    spark = SparkSession.builder \
+        .appName("karl03") \
+        .getOrCreate()
+
+    datadir: str = os.getenv("DATADIR")
+    if datadir is None:
+        raise ValueError("Environment variable DATADIR must be defined")
+    print(f"datadir = '{datadir}'")
 
     schema = T.StructType([
         T.StructField('year', T.IntegerType(), True),
@@ -70,47 +90,18 @@ def preprocessing(spark: SparkSession, pppath: Path, datadir: str):
     sales5: DataFrame = spark.read.csv(csv_path, header='true', schema=schema) \
         .withColumn("label", F.col('sales'))
 
-    ppdf = prepro(sales5)
-    print(f"--- Writing: '{pppath}'")
-    ppdf.write \
+    orig_path = str(Path(datadir, "Sales5_orig.parquet"))
+    print(f"--- Writing: '{orig_path}'")
+    sales5.write \
         .format("parquet") \
         .mode("overwrite") \
-        .save(str(pppath))
+        .save(orig_path)
 
+    print(f"--- Reading: '{orig_path}'")
+    df1: DataFrame = spark.read \
+        .parquet(orig_path)
 
-def process(spark: SparkSession, pppath: Path, datadir: str):
-    print("--- process -----------------------")
-    print(f"--- Reading: '{pppath}'")
-    df: DataFrame = spark.read \
-        .parquet(str(pppath))
-
-    train = df \
-        .where(F.col("label").isNotNull())
-    test = df \
-        .where(F.col("label").isNull())
-
-    lr = LinearRegression()
-    model = lr.fit(train)
-
-    pred = model.transform(test)
-    pred.show()
-
-
-def run():
-    spark = SparkSession.builder \
-        .appName("karl04") \
-        .getOrCreate()
-
-    datadir: str = os.getenv("DATADIR")
-    if datadir is None:
-        raise ValueError("Environment variable DATADIR must be defined")
-    print(f"datadir = '{datadir}'")
-
-    ppnam = "s5_01"
-    pppath = Path(datadir, f"{ppnam}.parquet")
-    if not pppath.exists():
-        preprocessing(spark, pppath, datadir)
-    process(spark, pppath, datadir)
+    df1.show()
 
 
 def main():

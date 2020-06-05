@@ -1,8 +1,8 @@
 import os
 from pathlib import Path
 
-import pyspark.sql.types as T
-from pyspark import Row
+import pyspark.sql.types as st
+from pyspark.sql.types import Row
 from pyspark.ml.regression import GBTRegressor
 from pyspark.sql import DataFrame, SparkSession
 
@@ -15,20 +15,19 @@ if datadir is None:
     raise ValueError("Environment variable DATADIR must be defined")
 print(f"datadir = '{datadir}'")
 
-schema = T.StructType([
-    T.StructField('year', T.IntegerType(), True),
-    T.StructField('month', T.IntegerType(), True),
-    T.StructField('dn', T.IntegerType(), True),
-    T.StructField('wday', T.IntegerType(), True),
-    T.StructField('snap', T.IntegerType(), True),
-    T.StructField('dept_id', T.StringType(), True),
-    T.StructField('item_id', T.StringType(), True),
-    T.StructField('store_id', T.StringType(), True),
-    T.StructField('sales', T.DoubleType(), True),
-    T.StructField('flag_ram', T.IntegerType(), True),
-    T.StructField('Sales_Pred', T.DoubleType(), True)
+schema = st.StructType([
+    st.StructField('year', st.IntegerType(), True),
+    st.StructField('month', st.IntegerType(), True),
+    st.StructField('dn', st.IntegerType(), True),
+    st.StructField('wday', st.IntegerType(), True),
+    st.StructField('snap', st.IntegerType(), True),
+    st.StructField('dept_id', st.StringType(), True),
+    st.StructField('item_id', st.StringType(), True),
+    st.StructField('store_id', st.StringType(), True),
+    st.StructField('sales', st.DoubleType(), True),
+    st.StructField('flag_ram', st.IntegerType(), True),
+    st.StructField('Sales_Pred', st.DoubleType(), True)
 ])
-
 
 p = str(Path(datadir, "Sales5_Ab2011_InklPred.csv"))
 print(f"Reading: '{p}'")
@@ -46,7 +45,6 @@ print("------------------------- R E A D Y --------------------------------")
 
 
 def train(df: DataFrame):
-
     def astraining(row: Row) -> Row:
         df = row.asDict()
         del df['Sales_Pred']

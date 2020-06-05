@@ -1,15 +1,15 @@
 from pathlib import Path
 from typing import Tuple
 
-import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
 import numpy as np
 
+
 def tupl(key: str) -> Tuple:
     return key, np.random.random(100)
-    
+
 
 keys = ['2000_01', "2000_02", "2000_03", "2000_04"]
 ts = [tupl(k) for k in keys]
