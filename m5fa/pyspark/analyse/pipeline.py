@@ -6,11 +6,11 @@ from pprint import pprint
 
 import pyspark.sql.functions as sfunc
 import pyspark.sql.types as stype
-from pyspark.ml import Pipeline, Estimator
+from pyspark.ml import Pipeline, Estimator, Transformer
 from pyspark.ml.evaluation import RegressionEvaluator
 from pyspark.ml.feature import StringIndexer, OneHotEncoderEstimator, VectorAssembler
 from pyspark.ml.regression import GeneralizedLinearRegression
-from pyspark.ml.tuning import ParamGridBuilder, TrainValidationSplit
+from pyspark.ml.tuning import ParamGridBuilder, TrainValidationSplit, TrainValidationSplitModel
 from pyspark.sql import DataFrame, SparkSession
 
 import helpers as hlp
@@ -27,7 +27,7 @@ class Esti:
 @dataclass
 class PipResult:
     rmse: float
-    hparams: dict
+    model: Estimator
 
 
 @dataclass
@@ -83,14 +83,8 @@ def prepro(spark: SparkSession, datadir: Path, nam: str):
 
 
 def pipeline1(pp: DataFrame, esti: Estimator) -> PipResult:
-    marams = {
-        'p1': 298347,
-        'hste_la_vista': 'H',
-        'good': True,
-        'value_up': 8.2347,
-        'nix': None
-    }
-    return PipResult(7.9238429847, marams)
+    glr = GeneralizedLinearRegression()
+    return PipResult(7.9238429847, glr)
 
 
 def pipeline(pp: DataFrame, esti: Estimator) -> PipResult:
@@ -114,8 +108,7 @@ def pipeline(pp: DataFrame, esti: Estimator) -> PipResult:
                                trainRatio=0.8)
 
     # Run TrainValidationSplit, and choose the best set of parameters.
-    besti = tvs.fit(train)
-    param_map = besti.bestModel.extractParamMap()
+    besti: TrainValidationSplitModel = tvs.fit(train)
 
     # Make predictions on test data. model is the model with combination of parameters
     # that performed best.
@@ -128,14 +121,14 @@ def pipeline(pp: DataFrame, esti: Estimator) -> PipResult:
     rmse = evaluator.evaluate(predictions)
 
     print("Root Mean Squared Error (RMSE) on test data = %g" % rmse)
-    return PipResult(rmse, param_map)
+    return PipResult(rmse, besti.bestModel)
 
 
 def preprocessing():
     spark = SparkSession.builder \
         .appName(os.path.basename(__file__)) \
         .getOrCreate()
-    prepro(spark, hlp.get_datadir(), "sp5_01")
+    prepro(spark, hlp.get_datadir(), "sp5_01_small")
     spark.stop()
 
 
@@ -146,6 +139,10 @@ def main():
         .getOrCreate()
     pp: DataFrame = hlp.read(spark, hlp.get_datadir(), "s5_01") \
         .where(sfunc.col("label").isNotNull())
+    estis1 = [
+        Esti(pp, GeneralizedLinearRegression(family='poisson', link='identity', maxIter=10, regParam=0.3),
+             "glr poisson identity", "glrpi"),
+    ]
     estis = [
         Esti(pp, GeneralizedLinearRegression(family='poisson', link='identity', maxIter=10, regParam=0.3),
              "glr poisson identity", "glrpi"),
@@ -156,7 +153,7 @@ def main():
         Esti(pp, GeneralizedLinearRegression(family='binomial', link='logit', maxIter=10, regParam=0.3),
              "glr gamma identity", "glrgai"),
     ]
-    reses = [EstiResult(e, pipeline(e.data, e.esti)) for e in estis]
+    reses = [EstiResult(e, pipeline(e.data, e.esti)) for e in estis1]
     print()
     print(f"+------------------------------------------------+")
     print(f"|model                                |mse       |")
@@ -167,8 +164,11 @@ def main():
     print()
     for res in reses:
         print(f"Hyperparams: {res.esti.desc}")
-        hpar: dict = res.pip_result.hparams
-        pprint(hpar)
+        model = res.pip_result.model
+        print(f"+-------model-----------------------------------------+")
+        pprint(model)
+        print(f"+-------params-----------------------------------------+")
+        pprint(model.extractParamMap())
 #        print(f"+------------------------------------------------+")
 #        for k in hpar.keys():
 #            v = hpar[k]

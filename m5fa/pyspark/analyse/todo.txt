@@ -1,4 +1,4 @@
-- serialice a model and try to return it from pipline
+- try to return a model it from pipline
 - save returned model
 - create a submission dataframe
 - submit
