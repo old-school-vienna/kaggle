@@ -15,3 +15,4 @@ matplotlib = "*"
 [dev-packages]
 pytest = "*"
 pytest-spark = ">=0.4.4"
+importlib-metadata = ">=1.6.1"
