@@ -7,6 +7,7 @@ from pyspark.ml.regression import LinearRegression
 from pyspark.sql import SparkSession
 
 import helpers as hlp
+from common import fnam
 
 
 def no_idea():
@@ -18,10 +19,10 @@ def no_idea():
 
     rdd_long = sc.parallelize(range(0, 10000000))
 
-    l = rdd_long.take(20)
-    print(f"type from take: {type(l)}")
+    short = rdd_long.take(20)
+    print(f"type from take: {type(short)}")
 
-    rdd_short = sc.parallelize(l) \
+    rdd_short = sc.parallelize(short) \
         .filter(lambda x: x % 2 == 0)
 
     print(f"len of short: {rdd_short.collect()}")
@@ -71,4 +72,15 @@ def save_model():
     save_load_hlp()
 
 
-save_model()
+def load_model():
+    SparkSession.builder \
+        .appName("tryout") \
+        .getOrCreate()
+    eid = "glrgi"
+    fn = fnam(eid)
+    m = hlp.load_model(hlp.get_datadir(), fn)
+    print(f"----reading {fn}----------")
+    pprint(m.extractParamMap())
+
+
+load_model()

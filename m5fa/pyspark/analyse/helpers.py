@@ -33,9 +33,12 @@ def write(df: DataFrame, datadir: Path, nam: str):
 
 
 def get_datadir() -> Path:
-    dd: Path = Path(os.getenv("DATADIR"))
-    if dd is None:
+    env = os.getenv("DATADIR")
+    if env is None:
         raise ValueError("Environment variable DATADIR must be defined")
+    dd = Path(env)
+    if not dd.exists():
+        raise ValueError(f"Environment variable DATADIR define an existing directory. {dd}")
     return dd
 
 
@@ -56,22 +59,7 @@ def create_small_dataframe():
     write(small, dd, "s5_01_small")
 
 
-def fval(value: Any, leng: int) -> str:
-    if value is None:
-        fstr = f"{{:{leng}}}"
-        return fstr.format('None')
-    if isinstance(value, int):
-        fstr = f"{{:{leng}d}}"
-        return fstr.format(value)
-    if isinstance(value, float):
-        fstr = f"{{:{leng}.3f}}"
-        return fstr.format(value)
-    else:
-        fstr = f"{{:{leng}}}"
-        return fstr.format(str(value))
-
-
-def extract_classnam(fnam: str) -> Classnam:
+def classnam_from_filenam(fnam: str) -> Classnam:
     snam = fnam.split("__")
     return Classnam(snam[0], snam[1])
 
@@ -80,26 +68,26 @@ def create_nam_from_classname(cn: Classnam, nam: str) -> str:
     return f"{cn.module}__{cn.nam}__{nam}"
 
 
-def create_nam_classname(obj: Any) -> Classnam:
+def classnam_from_obj(obj: Any) -> Classnam:
     mod = obj.__module__
     cn = obj.__class__.__name__
     return Classnam(mod, cn)
 
 
 def save_model(model: MLWritable, bdir: Path, nam: str) -> str:
-    cn = create_nam_classname(model)
+    cn = classnam_from_obj(model)
     nams = [f.name for f in bdir.iterdir()]
     if file_for_other_class_exists(nams, cn, nam):
         raise ValueError(f"File for name {nam} exists for other class")
 
-    cn = create_nam_classname(model)
+    cn = classnam_from_obj(model)
     cnam = create_nam_from_classname(cn, nam)
     model.write().overwrite().save(str(bdir / cnam))
     return cnam
 
 
 def file_for_other_class_exists(fnams: Iterable[str], cn: Classnam, nam: str):
-    cns = [extract_classnam(fnam) != cn for fnam in fnams if fnam.endswith(nam)]
+    cns = [classnam_from_filenam(fnam) != cn for fnam in fnams if fnam.endswith(nam)]
     return any(cns)
 
 
@@ -115,7 +103,7 @@ def load_model(bdir: Path, nam: str) -> Any:
         return matching[0]
 
     path = find_dedicated_file()
-    cn = extract_classnam(path.name)
+    cn = classnam_from_filenam(path.name)
 
     module = importlib.import_module(cn.module)
     my_class = getattr(module, cn.nam)

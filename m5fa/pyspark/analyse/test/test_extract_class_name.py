@@ -5,24 +5,25 @@ import helpers as hlp
 
 
 def test_simple():
-    cls = hlp.extract_classnam("mod.x__myclass__x1.spark")
+    cls = hlp.classnam_from_filenam("mod.x__myclass__x1.spark")
     assert cls == hlp.Classnam("mod.x", "myclass")
 
 
 def test_with_upper():
-    cls = hlp.extract_classnam("mod.x__MyClass__x1.spark")
+    cls = hlp.classnam_from_filenam("mod.x__MyClass__x1.spark")
     assert cls == hlp.Classnam("mod.x", "MyClass")
 
 
 def test_with_unders():
-    cls = hlp.extract_classnam("mod.x__my_class__x1.spark")
+    cls = hlp.classnam_from_filenam("mod.x__my_class__x1.spark")
     assert cls == hlp.Classnam("mod.x", "my_class")
 
 
 def test_create_nam_glr():
     SparkContext("local", "first app")
     a = GeneralizedLinearRegression()
-    cn = hlp.create_nam_from_classname(a, "x.spark")
+    cn = hlp.classnam_from_obj(a)
+    cn = hlp.create_nam_from_classname(cn, "x.spark")
     assert cn == "pyspark.ml.regression__GeneralizedLinearRegression__x.spark"
 
 

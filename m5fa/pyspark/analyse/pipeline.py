@@ -13,6 +13,7 @@ from pyspark.ml.regression import GeneralizedLinearRegression, RandomForestRegre
 from pyspark.ml.tuning import ParamGridBuilder, TrainValidationSplit, TrainValidationSplitModel
 from pyspark.sql import DataFrame, SparkSession
 
+import common as cm
 import helpers as hlp
 
 
@@ -29,7 +30,7 @@ class Esti:
     esti: Estimator
     desc: str
     id: str
-    train_call: Callable[[DataFrame, Estimator], PipResult]
+    train_call: Callable[[DataFrame, Estimator, str], PipResult]
 
 
 @dataclass
@@ -38,12 +39,12 @@ class EstiResult:
     pip_result: PipResult
 
 
-def train_dummy(pp: DataFrame, esti: Estimator) -> PipResult:
+def train_dummy(pp: DataFrame, esti: Estimator, eid: id) -> PipResult:
     glr = GeneralizedLinearRegression()
     return PipResult(7.9238429847, glr, 'OK')
 
 
-def train_lr(data: DataFrame, esti: Estimator) -> PipResult:
+def train_lr(data: DataFrame, esti: Estimator, eid: str) -> PipResult:
     try:
         # Prepare training and test data.
         train, test = data.randomSplit([0.9, 0.1], seed=12345)
@@ -77,7 +78,10 @@ def train_lr(data: DataFrame, esti: Estimator) -> PipResult:
             labelCol="label", predictionCol="prediction", metricName="rmse")
         rmse = evaluator.evaluate(predictions)
 
-        print("Root Mean Squared Error (RMSE) on test data = %g" % rmse)
+        print(f"-- Root Mean Squared Error (RMSE) on test data = {rmse}")
+        fnam = cm.fnam(eid)
+        hlp.save_model(besti.bestModel, hlp.get_datadir(), fnam)
+        print(f"-- saved model to {fnam}")
         return PipResult(rmse, besti.bestModel, "OK")
     except Exception:
         print(tb.format_exc())
@@ -91,16 +95,17 @@ def main():
         .getOrCreate()
     pp: DataFrame = hlp.read(spark, hlp.get_datadir(), "s5_01") \
         .where(sfunc.col("label").isNotNull())
+
     estis = [
-        Esti(pp, GeneralizedLinearRegression(family='gaussian', link='identity', maxIter=10, regParam=0.3),
+        Esti(pp, GeneralizedLinearRegression(family='gaussian', link='identity'),
              "glr gaussian identity", "glrgi", train_lr),
     ]
     estis_glr = [
-        Esti(pp, GeneralizedLinearRegression(family='poisson', link='identity', maxIter=10, regParam=0.3),
+        Esti(pp, GeneralizedLinearRegression(family='poisson', link='identity'),
              "glr poisson identity", "glrpi", train_lr),
-        Esti(pp, GeneralizedLinearRegression(family='gaussian', link='identity', maxIter=10, regParam=0.3),
+        Esti(pp, GeneralizedLinearRegression(family='gaussian', link='identity'),
              "glr gaussian identity", "glrgi", train_lr),
-        Esti(pp, GeneralizedLinearRegression(family='poisson', link='log', maxIter=10, regParam=0.3),
+        Esti(pp, GeneralizedLinearRegression(family='poisson', link='log'),
              "glr poisson log", "glrpi", train_lr),
     ]
     estis_class = [
@@ -109,7 +114,8 @@ def main():
         Esti(pp, RandomForestRegressor(),
              "rf default", "rfd", train_dummy),
     ]
-    reses = [EstiResult(e, e.train_call(e.data, e.esti)) for e in estis]
+
+    reses = [EstiResult(e, e.train_call(e.data, e.esti, e.id)) for e in estis_glr]
     print()
     print(f"+-----------------------------------------------------------+")
     print(f"|model                                |mse       |state     |")
