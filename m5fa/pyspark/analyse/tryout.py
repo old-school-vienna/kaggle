@@ -1,10 +1,14 @@
 from dataclasses import dataclass
+from pathlib import Path
 from pprint import pprint
 
-from pyspark import SparkContext
-from pyspark.ml.regression import GeneralizedLinearRegression
-from pyspark.sql import SparkSession
 import pyspark.sql.types as t
+from pyspark import SparkContext
+from pyspark.ml.regression import LinearRegression
+from pyspark.sql import SparkSession
+
+import helpers as hlp
+from common import fnam
 
 
 def no_idea():
@@ -16,10 +20,10 @@ def no_idea():
 
     rdd_long = sc.parallelize(range(0, 10000000))
 
-    l = rdd_long.take(20)
-    print(f"type from take: {type(l)}")
+    short = rdd_long.take(20)
+    print(f"type from take: {type(short)}")
 
-    rdd_short = sc.parallelize(l) \
+    rdd_short = sc.parallelize(short) \
         .filter(lambda x: x % 2 == 0)
 
     print(f"len of short: {rdd_short.collect()}")
@@ -37,22 +41,47 @@ def dataclass_example():
 
 
 def save_model():
-    def save_load():
-        path = "/tmp/m1.sp"
-        spark = SparkSession.builder \
+    path = Path("target")
+    if not path.exists():
+        path.mkdir()
+    nam = "gr1.sp"
+
+    def save_load_hlp():
+        SparkSession.builder \
             .appName("tryout") \
             .getOrCreate()
-        m = GeneralizedLinearRegression(regParam=0.5, maxIter=10)
+        m = LinearRegression(regParam=0.5, maxIter=10)
         pm = m.extractParamMap()
         pprint(pm)
-        m.save(path)
+        print()
+        pprint(str(path))
+        hlp.save_model(m, path, nam)
 
-        m2c = eval("GeneralizedLinearRegression")
-        m2 = m2c.load(path)
+        m2 = hlp.load_model(path, nam)
         pm2 = m2.extractParamMap()
         pprint(pm2)
 
-    save_load()
+    def load_hlp():
+        SparkSession.builder \
+            .appName("tryout") \
+            .getOrCreate()
+
+        m2 = hlp.load_model(path, nam)
+        pm2 = m2.extractParamMap()
+        pprint(pm2)
+
+    save_load_hlp()
+
+
+def load_model():
+    SparkSession.builder \
+        .appName("tryout") \
+        .getOrCreate()
+    eid = "glrgi"
+    fn = fnam(eid)
+    m = hlp.load_model(hlp.get_datadir(), fn)
+    print(f"----reading {fn}----------")
+    pprint(m.extractParamMap())
 
 
 def submission():
