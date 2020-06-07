@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pyspark.sql.functions as F
 import pyspark.sql.types as T
-from pyspark import Row, RDD
+from pyspark import RDD
 from pyspark.sql import DataFrame, SparkSession
 
 spark = SparkSession.builder \
@@ -30,7 +30,7 @@ schema = T.StructType([
 ])
 
 
-def mse(row: Row) -> Row:
+def mse(row: T.Row) -> T.Row:
     d = row.asDict()
     _mse = 0.0
     if d['Sales_Pred'] is None:
@@ -41,10 +41,10 @@ def mse(row: Row) -> Row:
     else:
         _mse = (d['Sales_Pred'] - d['sales']) ** 2
     d['mse'] = _mse
-    return Row(**d)
+    return T.Row(**d)
 
 
-def keyvalues(row: Row) -> ((str, str), float):
+def keyvalues(row: T.Row) -> ((str, str), float):
     d = row.asDict()
     key = (d["store_id"], d["dept_id"], d["year"])
     return key, d["mse"]
