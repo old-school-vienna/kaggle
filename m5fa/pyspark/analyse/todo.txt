@@ -6,7 +6,8 @@
 - try RandomForestRegressor 
 - try GBTRegressor
 
-- submit to kaggle
+- create csv and submit to kaggle
+
 --work----------------------------------------------------------
 - create a submission dataframe
 
