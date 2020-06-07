@@ -6,14 +6,12 @@
 - try RandomForestRegressor 
 - try GBTRegressor
 
-- create a submission dataframe
-- submit
-
-
-
+- submit to kaggle
 --work----------------------------------------------------------
-- save returned model
+- create a submission dataframe
+
 --done----------------------------------------------------------
+- save returned model
 - try to return a model it from pipline
 - create a small dataset for testruns
 - cleanup project
