@@ -1,3 +1,11 @@
+- build spark from source
+- integrate blast support
+- NativeSystemLAPACK
+- NativeRefLAPACK
+- refactor preprocessing.py
+- try RandomForestRegressor 
+- try GBTRegressor
+
 - try to return a model it from pipline
 - save returned model
 - create a submission dataframe
