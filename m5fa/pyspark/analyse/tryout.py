@@ -4,6 +4,7 @@ from pprint import pprint
 from pyspark import SparkContext
 from pyspark.ml.regression import GeneralizedLinearRegression
 from pyspark.sql import SparkSession
+import pyspark.sql.types as t
 
 
 def no_idea():
@@ -53,4 +54,49 @@ def save_model():
 
     save_load()
 
-save_model()
+
+def submission():
+    testval = [
+        [1, 'HOBBIES_1_001', 'CA_1', 2.2],
+        [1, 'HOBBIES_1_001', 'CA_2', 0.0],
+        [1, 'HOBBIES_1_001', 'TX_1', 2.0],
+        [1, 'HOBBIES_1_002', 'CA_1', 2.0],
+        [1, 'HOBBIES_1_002', 'CA_2', 0.0],
+        [1, 'HOBBIES_1_002', 'TX_1', 2.0],
+        [2, 'HOBBIES_1_001', 'CA_1', 2.0],
+        [2, 'HOBBIES_1_001', 'CA_2', 0.0],
+        [2, 'HOBBIES_1_001', 'TX_1', 2.0],
+        [2, 'HOBBIES_1_001', 'TX_2', 1.0],
+        [2, 'HOBBIES_1_002', 'CA_1', 0.0],
+        [2, 'HOBBIES_1_002', 'CA_2', 0.0],
+        [2, 'HOBBIES_1_002', 'TX_1', 2.0],
+        [3, 'HOBBIES_1_001', 'CA_1', 2.0],
+        [3, 'HOBBIES_1_001', 'CA_2', 0.0],
+        [3, 'HOBBIES_1_001', 'TX_1', 2.0],
+        [3, 'HOBBIES_1_002', 'CA_1', 2.2],
+        [3, 'HOBBIES_1_002', 'CA_2', 0.3],
+        [3, 'HOBBIES_1_002', 'TX_1', 2.4],
+        [4, 'HOBBIES_1_001', 'CA_1', 2.0],
+        [4, 'HOBBIES_1_001', 'CA_2', 0.5],
+        [4, 'HOBBIES_1_001', 'TX_1', 2.1],
+        [4, 'HOBBIES_1_001', 'TX_2', 1.1],
+        [4, 'HOBBIES_1_002', 'CA_1', 0.1],
+        [4, 'HOBBIES_1_002', 'CA_2', 0.2],
+        [4, 'HOBBIES_1_002', 'TX_1', 2.2],
+    ]
+    spark = SparkSession.builder \
+        .appName("tryout") \
+        .getOrCreate()
+    schema = t.StructType([
+        t.StructField('dn', t.IntegerType(), True),
+        t.StructField('item_id', t.StringType(), True),
+        t.StructField('store_id', t.StringType(), True),
+        t.StructField('prediction', t.DoubleType(), True),
+    ])
+
+    df = spark.createDataFrame(testval, schema=schema)
+    dfp = df.groupBy('item_id', 'store_id').pivot("dn").sum('prediction')
+    dfp.show()
+
+
+submission()
