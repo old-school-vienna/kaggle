@@ -1,6 +1,8 @@
 from dataclasses import dataclass
+from pprint import pprint
 
 from pyspark import SparkContext
+from pyspark.ml.regression import GeneralizedLinearRegression
 from pyspark.sql import SparkSession
 
 
@@ -31,3 +33,24 @@ def dataclass_example():
     x = X(nam='hallo', cnt=11)
 
     print(x)
+
+
+def save_model():
+    def save_load():
+        path = "/tmp/m1.sp"
+        spark = SparkSession.builder \
+            .appName("tryout") \
+            .getOrCreate()
+        m = GeneralizedLinearRegression(regParam=0.5, maxIter=10)
+        pm = m.extractParamMap()
+        pprint(pm)
+        m.save(path)
+
+        m2c = eval("GeneralizedLinearRegression")
+        m2 = m2c.load(path)
+        pm2 = m2.extractParamMap()
+        pprint(pm2)
+
+    save_load()
+
+save_model()
