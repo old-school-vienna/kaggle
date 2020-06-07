@@ -96,7 +96,17 @@ def submission():
 
     df = spark.createDataFrame(testval, schema=schema)
     dfp = df.groupBy('item_id', 'store_id').pivot("dn").sum('prediction')
-    dfp.show()
+
+    def rename_col(cn: str) -> str:
+        if cn in ['item_id', 'store_id']:
+            return cn
+        else:
+            return f"F{cn}"
+
+    new_cols = [rename_col(c) for c in dfp.columns]
+
+    dfp1 = dfp.toDF(*new_cols)
+    dfp1.show()
 
 
 submission()
