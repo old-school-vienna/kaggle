@@ -16,15 +16,13 @@ class Classnam:
     nam: str
 
 
-def read(spark: SparkSession, datadir: Path, nam: str) -> DataFrame:
-    print(f"datadir = '{datadir}'")
-
-    path = datadir / f"{nam}.parquet"
+def readFromDatadirParquet(spark: SparkSession, nam: str) -> DataFrame:
+    path = get_datadir() / f"{nam}.parquet"
     return spark.read.parquet(str(path))
 
 
-def write(df: DataFrame, datadir: Path, nam: str):
-    small_path = datadir / f"{nam}.parquet"
+def writeToDatadirParquet(df: DataFrame, nam: str):
+    small_path = get_datadir() / f"{nam}.parquet"
     print(f"--- Writing: '{small_path}'")
     df.write \
         .format("parquet") \
@@ -48,7 +46,7 @@ def create_small_dataframe():
         .appName(os.path.basename(__file__)) \
         .getOrCreate()
     dd = get_datadir()
-    big: DataFrame = read(sps, dd, "s5_01")
+    big: DataFrame = readFromDatadirParquet(sps, "s5_01")
     train = big \
         .where(sf.col("label").isNotNull()) \
         .limit(200)
@@ -56,7 +54,7 @@ def create_small_dataframe():
         .where(sf.col("label").isNull()) \
         .limit(50)
     small = train.union(test)
-    write(small, dd, "s5_01_small")
+    writeToDatadirParquet(small, "s5_01_small")
 
 
 def classnam_from_filenam(fnam: str) -> Classnam:

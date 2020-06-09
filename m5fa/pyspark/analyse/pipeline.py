@@ -93,7 +93,7 @@ def main():
     spark = SparkSession.builder \
         .appName(os.path.basename(__file__)) \
         .getOrCreate()
-    pp: DataFrame = hlp.read(spark, hlp.get_datadir(), "s5_01") \
+    pp: DataFrame = hlp.readFromDatadirParquet(spark, "s5_01") \
         .where(sfunc.col("label").isNotNull())
 
     estis = [

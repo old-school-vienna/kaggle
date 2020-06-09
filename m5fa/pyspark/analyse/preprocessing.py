@@ -53,7 +53,7 @@ def prepro(spark: SparkSession, datadir: Path, nam: str):
     ppdf = pp(sales5)
     print(f"--- Writing: '{nam}'")
 
-    hlp.write(ppdf, datadir, nam)
+    hlp.writeToDatadirParquet(ppdf, nam)
 
 
 def preprocessing():

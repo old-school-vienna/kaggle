@@ -19,7 +19,7 @@ class Model:
 models = [
     Model("glr poisson identity", "glrpi"),
     Model("glr gaussian identity", "glrgi"),
-    Model("glr poisson log", "glrpi"),
+    Model("glr poisson log", "glrpl"),
 ]
 
 
@@ -49,7 +49,7 @@ for m in models:
     pmap = t.extractParamMap()
     print(f"-- Loaded {m}")
 
-    test_df = hlp.read(spark, hlp.get_datadir(), "s5_01") \
+    test_df = hlp.readFromDatadirParquet(spark, "s5_01") \
         .where(F.col("label").isNull())
 
     pred = t.transform(test_df)
@@ -63,10 +63,10 @@ for m in models:
         .pivot("dn1") \
         .sum('ipred')
 
-    pred_df = pred \
+    evalu_df = pred \
         .where(pred.dn > 1941) \
         .withColumn("dn1", pred.dn - 1941) \
-        .withColumn("id", F.concat(F.col('item_id'), F.lit('_'), F.col('store_id'), F.lit('_validation'))) \
+        .withColumn("id", F.concat(F.col('item_id'), F.lit('_'), F.col('store_id'), F.lit('_evaluation'))) \
         .withColumn("ipred", F.col('prediction').cast(T.IntegerType())) \
         .groupBy('id') \
         .pivot("dn1") \
@@ -76,18 +76,14 @@ for m in models:
         .orderBy('id')
     vali_pdf.show()
 
-    pred_pdf = rename_cols(pred_df) \
+    evalu_pdf = rename_cols(evalu_df) \
         .orderBy('id')
-    pred_pdf.describe().show()
+    evalu_pdf.describe().show()
 
-    submission = vali_pdf.union(pred_pdf)
+    submission = vali_pdf.union(evalu_pdf)
     spath = hlp.get_datadir() / f'subm_{m.id}.csv'
-    submission.write \
-        .format('csv') \
-        .mode('overwrite'). \
-        save(str(spath))
+    submission.toPandas().to_csv(str(spath), header=True, index=False)
     print("-----------------------------------------------------")
     print(f"-- Wrote submission for {m.desc} to {spath.absolute()}")
     print()
     print()
- 
