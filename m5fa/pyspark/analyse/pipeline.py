@@ -7,9 +7,8 @@ from typing import Optional, Callable
 
 import pyspark.sql.functions as sfunc
 from pyspark.ml import Estimator
-from pyspark.ml.classification import GBTClassifier
 from pyspark.ml.evaluation import RegressionEvaluator
-from pyspark.ml.regression import GeneralizedLinearRegression, RandomForestRegressor
+from pyspark.ml.regression import GeneralizedLinearRegression, GBTRegressor
 from pyspark.ml.tuning import ParamGridBuilder, TrainValidationSplit, TrainValidationSplitModel
 from pyspark.sql import DataFrame, SparkSession
 
@@ -30,7 +29,7 @@ class Esti:
     esti: Estimator
     desc: str
     id: str
-    train_call: Callable[[DataFrame, Estimator, str], PipResult]
+    param_grid: Callable[[Estimator], list]
 
 
 @dataclass
@@ -39,38 +38,52 @@ class EstiResult:
     pip_result: PipResult
 
 
-def train_dummy(pp: DataFrame, esti: Estimator, eid: id) -> PipResult:
-    glr = GeneralizedLinearRegression()
-    return PipResult(7.9238429847, glr, 'OK')
+def param_grid_lr(esti: Estimator) -> list:
+    return ParamGridBuilder() \
+        .addGrid(esti.regParam, [0.1, 0.01]) \
+        .addGrid(esti.fitIntercept, [False, True]) \
+        .build()
 
 
-def train_lr(data: DataFrame, esti: Estimator, eid: str) -> PipResult:
+def param_grid_gbtr(esti: Estimator) -> list:
+    return ParamGridBuilder() \
+        .addGrid(esti.maxBins, [16, 32, 64]) \
+        .addGrid(esti.maxDepth, [3, 5, 10]) \
+        .build()
+
+
+def param_grid_empty(esti: Estimator) -> list:
+    return ParamGridBuilder() \
+        .build()
+
+
+def train(data: DataFrame, esti: Estimator, eid: str, param_grid_builder: Callable[[Estimator], list]) -> PipResult:
     try:
+        print(f"--- train {eid}")
         # Prepare training and test data.
-        train, test = data.randomSplit([0.9, 0.1], seed=12345)
+        df_train, df_test = data.randomSplit([0.9, 0.1], seed=12345)
 
         # We use a ParamGridBuilder to construct a grid of parameters to search over.
         # TrainValidationSplit will try all combinations of values and determine best model using
         # the evaluator.
-        param_grid = ParamGridBuilder() \
-            .addGrid(esti.regParam, [0.1, 0.01]) \
-            .addGrid(esti.fitIntercept, [False, True]) \
-            .build()
+        params = param_grid_builder(esti)
+        print(f"--- params")
+        pprint(params)
 
         # In this case the estimator is simply the linear regression.
         # A TrainValidationSplit requires an Estimator, a set of Estimator ParamMaps, and an Evaluator.
         tvs = TrainValidationSplit(estimator=esti,
-                                   estimatorParamMaps=param_grid,
+                                   estimatorParamMaps=params,
                                    evaluator=RegressionEvaluator(),
                                    # 80% of the data will be used for training, 20% for validation.
                                    trainRatio=0.8)
 
         # Run TrainValidationSplit, and choose the best set of parameters.
-        besti: TrainValidationSplitModel = tvs.fit(train)
+        besti: TrainValidationSplitModel = tvs.fit(df_train)
 
         # Make predictions on test data. model is the model with combination of parameters
         # that performed best.
-        predictions = besti.transform(test) \
+        predictions = besti.transform(df_test) \
             .select("features", "label", "prediction")
 
         # Select (prediction, true label) and compute test error
@@ -97,25 +110,23 @@ def main():
         .where(sfunc.col("label").isNotNull())
 
     estis = [
+        Esti(pp, GBTRegressor(),
+             "gradient boost regressor", "gbtr", param_grid_gbtr),
         Esti(pp, GeneralizedLinearRegression(family='gaussian', link='identity'),
-             "glr gaussian identity", "glrgi", train_lr),
+             "glr gaussian identity", "glrgi", param_grid_lr),
     ]
-    estis_glr = [
+    estis_all = [
         Esti(pp, GeneralizedLinearRegression(family='poisson', link='identity'),
-             "glr poisson identity", "glrpi", train_lr),
+             "glr poisson identity", "glrpi", param_grid_lr),
         Esti(pp, GeneralizedLinearRegression(family='gaussian', link='identity'),
-             "glr gaussian identity", "glrgi", train_lr),
+             "glr gaussian identity", "glrgi", param_grid_lr),
         Esti(pp, GeneralizedLinearRegression(family='poisson', link='log'),
-             "glr poisson log", "glrpi", train_lr),
-    ]
-    estis_class = [
-        Esti(pp, GBTClassifier(),
-             "gbt default", "gbtd", train_dummy),
-        Esti(pp, RandomForestRegressor(),
-             "rf default", "rfd", train_dummy),
+             "glr poisson log", "glrpi", param_grid_lr),
+        Esti(pp, GBTRegressor(),
+             "gradient boost regressor", "gbtr", param_grid_gbtr),
     ]
 
-    reses = [EstiResult(e, e.train_call(e.data, e.esti, e.id)) for e in estis_glr]
+    reses = [EstiResult(e, train(e.data, e.esti, e.id, e.param_grid)) for e in estis]
     print()
     print(f"+-----------------------------------------------------------+")
     print(f"|model                                |mse       |state     |")
@@ -143,5 +154,4 @@ def main():
 
 
 if __name__ == '__main__':
-    # preprocessing()
     main()

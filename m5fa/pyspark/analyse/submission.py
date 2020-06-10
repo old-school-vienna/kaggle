@@ -16,10 +16,13 @@ class Model:
     id: str
 
 
-models = [
-    Model("glr poisson identity", "glrpi"),
+models_all = [
     Model("glr gaussian identity", "glrgi"),
+    Model("glr poisson identity", "glrpi"),
     Model("glr poisson log", "glrpl"),
+]
+models = [
+    Model("glr gaussian identity", "glrgi"),
 ]
 
 
@@ -43,6 +46,8 @@ spark = SparkSession.builder \
     .appName("submission") \
     .getOrCreate()
 
+correct_neg = F.udf(lambda diff: 0 if diff < 0 else diff, T.IntegerType())
+
 for m in models:
     print(f"-- process {m}")
     t: Transformer = load_model(m)
@@ -58,7 +63,7 @@ for m in models:
         .where(pred.dn <= 1941) \
         .withColumn("dn1", pred.dn - 1913) \
         .withColumn("id", F.concat(F.col('item_id'), F.lit('_'), F.col('store_id'), F.lit('_validation'))) \
-        .withColumn("ipred", F.col('prediction').cast(T.IntegerType())) \
+        .withColumn("ipred", correct_neg(F.col('prediction').cast(T.IntegerType()))) \
         .groupBy('id') \
         .pivot("dn1") \
         .sum('ipred')
@@ -67,7 +72,7 @@ for m in models:
         .where(pred.dn > 1941) \
         .withColumn("dn1", pred.dn - 1941) \
         .withColumn("id", F.concat(F.col('item_id'), F.lit('_'), F.col('store_id'), F.lit('_evaluation'))) \
-        .withColumn("ipred", F.col('prediction').cast(T.IntegerType())) \
+        .withColumn("ipred", correct_neg(F.col('prediction').cast(T.IntegerType()))) \
         .groupBy('id') \
         .pivot("dn1") \
         .sum('ipred')
