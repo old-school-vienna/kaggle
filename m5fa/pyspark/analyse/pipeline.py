@@ -6,7 +6,7 @@ from pprint import pprint
 from typing import Optional, Callable
 
 import pyspark.sql.functions as sfunc
-from pyspark.ml import Estimator
+from pyspark.ml import Estimator, Transformer
 from pyspark.ml.evaluation import RegressionEvaluator
 from pyspark.ml.regression import GeneralizedLinearRegression, GBTRegressor
 from pyspark.ml.tuning import ParamGridBuilder, TrainValidationSplit, TrainValidationSplitModel
@@ -47,8 +47,8 @@ def param_grid_lr(esti: Estimator) -> list:
 
 def param_grid_gbtr(esti: Estimator) -> list:
     return ParamGridBuilder() \
-        .addGrid(esti.maxBins, [16, 32, 64]) \
-        .addGrid(esti.maxDepth, [3, 5, 10]) \
+        .addGrid(esti.maxBins, [16, 32]) \
+        .addGrid(esti.maxDepth, [5, 10]) \
         .build()
 
 
@@ -79,11 +79,11 @@ def train(data: DataFrame, esti: Estimator, eid: str, param_grid_builder: Callab
                                    trainRatio=0.8)
 
         # Run TrainValidationSplit, and choose the best set of parameters.
-        besti: TrainValidationSplitModel = tvs.fit(df_train)
+        trained_models: TrainValidationSplitModel = tvs.fit(df_train)
 
         # Make predictions on test data. model is the model with combination of parameters
         # that performed best.
-        predictions = besti.transform(df_test) \
+        predictions = trained_models.transform(df_test) \
             .select("features", "label", "prediction")
 
         # Select (prediction, true label) and compute test error
@@ -93,9 +93,41 @@ def train(data: DataFrame, esti: Estimator, eid: str, param_grid_builder: Callab
 
         print(f"-- Root Mean Squared Error (RMSE) on test data = {rmse}")
         fnam = cm.fnam(eid)
-        hlp.save_model(besti.bestModel, hlp.get_datadir(), fnam)
+        hlp.save_model(trained_models.bestModel, hlp.get_datadir(), fnam)
         print(f"-- saved model to {fnam}")
-        return PipResult(rmse, besti.bestModel, "OK")
+        return PipResult(rmse, trained_models.bestModel, "OK")
+    except Exception:
+        print(tb.format_exc())
+        return PipResult(0.0, None, "ERROR")
+
+
+def train_simple(data: DataFrame, esti: Estimator, eid: str) -> PipResult:
+    """
+    Train without cross validation
+    """
+    try:
+        print(f"--- train_simple {eid}")
+        # Prepare training and test data.
+        df_train, df_test = data.randomSplit([0.9, 0.1], seed=12345)
+
+        # Run TrainValidationSplit, and choose the best set of parameters.
+        trained_model: Transformer = esti.fit(df_train)
+
+        # Make predictions on test data. model is the model with combination of parameters
+        # that performed best.
+        predictions = trained_model.transform(df_test) \
+            .select("features", "label", "prediction")
+
+        # Select (prediction, true label) and compute test error
+        evaluator = RegressionEvaluator(
+            labelCol="label", predictionCol="prediction", metricName="rmse")
+        rmse = evaluator.evaluate(predictions)
+
+        print(f"-- Root Mean Squared Error (RMSE) on test data = {rmse}")
+        fnam = cm.fnam(eid)
+        hlp.save_model(trained_model, hlp.get_datadir(), fnam)
+        print(f"-- saved model to {fnam}")
+        return PipResult(rmse, trained_model, "OK")
     except Exception:
         print(tb.format_exc())
         return PipResult(0.0, None, "ERROR")
@@ -106,14 +138,16 @@ def main():
     spark = SparkSession.builder \
         .appName(os.path.basename(__file__)) \
         .getOrCreate()
-    pp: DataFrame = hlp.readFromDatadirParquet(spark, "s5_01") \
+    df_name = "s5_01_small"
+    print(f"-- df: {df_name}")
+    pp: DataFrame = hlp.readFromDatadirParquet(spark, df_name) \
         .where(sfunc.col("label").isNotNull())
 
     estis = [
-        Esti(pp, GBTRegressor(),
-             "gradient boost regressor", "gbtr", param_grid_gbtr),
         Esti(pp, GeneralizedLinearRegression(family='gaussian', link='identity'),
              "glr gaussian identity", "glrgi", param_grid_lr),
+        Esti(pp, GBTRegressor(),
+             "gradient boost regressor", "gbtr", param_grid_gbtr),
     ]
     estis_all = [
         Esti(pp, GeneralizedLinearRegression(family='poisson', link='identity'),
@@ -126,7 +160,9 @@ def main():
              "gradient boost regressor", "gbtr", param_grid_gbtr),
     ]
 
-    reses = [EstiResult(e, train(e.data, e.esti, e.id, e.param_grid)) for e in estis]
+    print(f"-- training {len(estis)} estimators")
+    reses = [EstiResult(e, train_simple(e.data, e.esti, e.id)) for e in estis]
+    
     print()
     print(f"+-----------------------------------------------------------+")
     print(f"|model                                |mse       |state     |")

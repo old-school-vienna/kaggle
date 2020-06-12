@@ -4,9 +4,8 @@ from pprint import pprint
 
 import pyspark.sql.types as t
 from pyspark import SparkContext
-from pyspark.ml.classification import GBTClassifier
 from pyspark.ml.regression import LinearRegression, GBTRegressor
-from pyspark.sql import SparkSession
+from pyspark.sql import SparkSession, DataFrame
 
 import helpers as hlp
 from common import fnam
@@ -189,4 +188,16 @@ def params_of_GBTRegressor():
     pprint(pm)
 
 
-params_of_GBTRegressor()
+def store_multiple_trained_models():
+    import pyspark.sql.functions as sfunc
+
+    spark = SparkSession.builder \
+        .appName("tryout") \
+        .getOrCreate()
+    pp: DataFrame = hlp.readFromDatadirParquet(spark, "s5_01") \
+        .where(sfunc.col("label").isNotNull())
+
+    pp.describe().show()
+
+
+store_multiple_trained_models()

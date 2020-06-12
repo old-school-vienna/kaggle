@@ -36,7 +36,7 @@ def get_datadir() -> Path:
         raise ValueError("Environment variable DATADIR must be defined")
     dd = Path(env)
     if not dd.exists():
-        raise ValueError(f"Environment variable DATADIR define an existing directory. {dd}")
+        raise ValueError(f"Environment variable DATADIR must define an existing directory. {dd}")
     return dd
 
 
@@ -46,7 +46,7 @@ def create_small_dataframe():
         .appName(os.path.basename(__file__)) \
         .getOrCreate()
     dd = get_datadir()
-    big: DataFrame = readFromDatadirParquet(sps, "s5_01")
+    big: DataFrame = readFromDatadirParquet(sps, "s5_01_small")
     train = big \
         .where(sf.col("label").isNotNull()) \
         .limit(200)
