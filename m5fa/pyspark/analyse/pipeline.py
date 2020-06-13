@@ -138,7 +138,9 @@ def main():
     spark = SparkSession.builder \
         .appName(os.path.basename(__file__)) \
         .getOrCreate()
-    df_name = "s5_01_small"
+
+    df_name = "s5_01"
+
     print(f"-- df: {df_name}")
     pp: DataFrame = hlp.readFromDatadirParquet(spark, df_name) \
         .where(sfunc.col("label").isNotNull())

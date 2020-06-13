@@ -1,8 +1,10 @@
 from dataclasses import dataclass
+from itertools import chain
 from pathlib import Path
 from pprint import pprint
 
-import pyspark.sql.types as t
+import pyspark.sql.types as T
+import pyspark.sql.functions as F
 from pyspark import SparkContext
 from pyspark.ml.regression import LinearRegression, GBTRegressor
 from pyspark.sql import SparkSession, DataFrame
@@ -116,11 +118,11 @@ def submission():
     spark = SparkSession.builder \
         .appName("tryout") \
         .getOrCreate()
-    schema = t.StructType([
-        t.StructField('dn', t.IntegerType(), True),
-        t.StructField('item_id', t.StringType(), True),
-        t.StructField('store_id', t.StringType(), True),
-        t.StructField('prediction', t.DoubleType(), True),
+    schema = T.StructType([
+        T.StructField('dn', T.IntegerType(), True),
+        T.StructField('item_id', T.StringType(), True),
+        T.StructField('store_id', T.StringType(), True),
+        T.StructField('prediction', T.DoubleType(), True),
     ])
 
     df = spark.createDataFrame(testval, schema=schema)
@@ -188,16 +190,40 @@ def params_of_GBTRegressor():
     pprint(pm)
 
 
-def store_multiple_trained_models():
-    import pyspark.sql.functions as sfunc
+@dataclass
+class TrainKey:
+    item_id: str
+    store_id: str
 
+
+def store_multiple_trained_models():
+    print("-- store_multiple_trained_models")
     spark = SparkSession.builder \
         .appName("tryout") \
         .getOrCreate()
-    pp: DataFrame = hlp.readFromDatadirParquet(spark, "s5_01") \
-        .where(sfunc.col("label").isNotNull())
 
-    pp.describe().show()
+    # Create small df if not exists
+    # hlp.create_small_dataframe(spark)
+
+    # Read data and filter for traing data
+    pp: DataFrame = hlp.readFromDatadirParquet(spark, "s5_01_medium") \
+        .where(F.col("label").isNotNull())
+
+    # Create key column
+    key_udf = F.udf(lambda a, b: f"{b}", T.StringType())
+    pp1 = pp.withColumn('key', key_udf(pp.item_id, pp.store_id))
+
+    # pp1.show()
+    pp1.describe().show()
+
+    # data ordered by key
+    pp2 = pp1 \
+        .sort('key')
+
+    keys = chain(*pp1.select("key").distinct().orderBy('key').take(5))
+    for k in keys:
+        pp3 = pp2.filter(f"key = '{k}'")
+        print(f"-- {k}: {pp3.count()}")
 
 
 store_multiple_trained_models()

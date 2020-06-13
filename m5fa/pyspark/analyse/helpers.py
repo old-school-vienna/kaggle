@@ -40,21 +40,27 @@ def get_datadir() -> Path:
     return dd
 
 
-def create_small_dataframe():
-    print("creating small dataset")
-    sps = SparkSession.builder \
-        .appName(os.path.basename(__file__)) \
-        .getOrCreate()
-    dd = get_datadir()
-    big: DataFrame = readFromDatadirParquet(sps, "s5_01_small")
+def create_small_dataframe(sps: SparkSession):
+    _create_small_df('s5_01', 'small', 200, 50, sps)
+
+
+def create_medium_dataframe(sps: SparkSession):
+    _create_small_df('s5_01', 'medium', 2000, 500, sps)
+
+
+def _create_small_df(base_name: str, qual: str, train_size: int, test_size: int, sps: SparkSession):
+    dest_nam = f"{base_name}_{qual}"
+    print(f"creating dataset. {base_name} -> {dest_nam}")
+    big: DataFrame = readFromDatadirParquet(sps, base_name)
+    big_size = float(big.count())
     train = big \
         .where(sf.col("label").isNotNull()) \
-        .limit(200)
+        .sample(train_size / big_size)
     test = big \
         .where(sf.col("label").isNull()) \
-        .limit(50)
+        .sample(test_size / big_size)
     small = train.union(test)
-    writeToDatadirParquet(small, "s5_01_small")
+    writeToDatadirParquet(small, dest_nam)
 
 
 def classnam_from_filenam(fnam: str) -> Classnam:
@@ -110,4 +116,7 @@ def load_model(bdir: Path, nam: str) -> Any:
 
 
 if __name__ == "__main__":
-    create_small_dataframe()
+    spark = SparkSession.builder\
+        .appName("helpers")\
+        .getOrCreate()
+    create_small_dataframe(spark)
