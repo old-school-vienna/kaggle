@@ -15,7 +15,7 @@ RUN apt-get install -y wget
 RUN apt-get install -y vim
 RUN apt-get install -y gfortran
 
-RUN wget -O spark.tgz https://mirror.klaus-uwe.me/apache/spark/spark-2.4.5/spark-2.4.5-bin-hadoop2.7.tgz
+RUN wget -O spark.tgz https://mirror.klaus-uwe.me/apache/spark/spark-2.4.6/spark-2.4.6-bin-hadoop2.7.tgz
 RUN mkdir /opt/spark
 RUN tar -xzf spark.tgz --strip-components=1 -C /opt/spark
 RUN rm spark.tgz
@@ -29,6 +29,7 @@ COPY Pipfile .
 COPY Pipfile.lock .
 
 ENV LANG=EN
+ENV PIPENV_INSTALL_TIMEOUT=9000
 RUN pipenv --python 3.7
 RUN pipenv install --dev --system --deploy  
 

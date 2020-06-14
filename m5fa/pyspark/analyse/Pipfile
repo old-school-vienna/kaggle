@@ -7,12 +7,11 @@ name = 'pypi'
 python_version = "3.7"
 
 [packages]
-pyspark = ">=2.4.0"
-pyspark-stubs = ">=2.4.0.post8"
+elephas = "==0.4.3"
 matplotlib = ">=3.2.1"
 Pandas = ">=1.0.4"
 
 [dev-packages]
 pytest = "*"
 pytest-spark = ">=0.4.4"
-importlib-metadata = ">=1.6.1"
+# importlib-metadata = ">=1.6.1"
