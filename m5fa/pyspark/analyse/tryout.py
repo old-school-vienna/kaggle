@@ -3,10 +3,12 @@ from itertools import chain
 from pathlib import Path
 from pprint import pprint
 
-import pyspark.sql.types as T
 import pyspark.sql.functions as F
+import pyspark.sql.types as T
 from pyspark import SparkContext
-from pyspark.ml.regression import LinearRegression, GBTRegressor
+from pyspark.ml import Estimator, Transformer
+from pyspark.ml.evaluation import RegressionEvaluator
+from pyspark.ml.regression import LinearRegression, GBTRegressor, GeneralizedLinearRegression
 from pyspark.sql import SparkSession, DataFrame
 
 import helpers as hlp
@@ -201,16 +203,17 @@ def store_multiple_trained_models():
     spark = SparkSession.builder \
         .appName("tryout") \
         .getOrCreate()
+    sc = spark.sparkContext
 
     # Create small df if not exists
     # hlp.create_small_dataframe(spark)
 
     # Read data and filter for traing data
-    pp: DataFrame = hlp.readFromDatadirParquet(spark, "s5_01_medium") \
+    pp: DataFrame = hlp.readFromDatadirParquet(spark, "s5_01") \
         .where(F.col("label").isNotNull())
 
     # Create key column
-    key_udf = F.udf(lambda a, b: f"{b}", T.StringType())
+    key_udf = F.udf(lambda a, b: f"{a}_{b}", T.StringType())
     pp1 = pp.withColumn('key', key_udf(pp.item_id, pp.store_id))
 
     # pp1.show()
@@ -220,10 +223,30 @@ def store_multiple_trained_models():
     pp2 = pp1 \
         .sort('key')
 
-    keys = chain(*pp1.select("key").distinct().orderBy('key').take(5))
+    def train_simple(data: DataFrame, esti: Estimator, key: str):
+        print(f"--- train_simple {key}")
+        # Prepare training and test data.
+        df_train, df_test = data.randomSplit([0.9, 0.1], seed=12345)
+
+        # Run TrainValidationSplit, and choose the best set of parameters.
+        trained_model: Transformer = esti.fit(df_train)
+
+        # Make predictions on test data. model is the model with combination of parameters
+        # that performed best.
+        predictions = trained_model.transform(df_test) \
+            .select("features", "label", "prediction")
+
+        # Select (prediction, true label) and compute test error
+        evaluator = RegressionEvaluator(
+            labelCol="label", predictionCol="prediction", metricName="rmse")
+        rmse = evaluator.evaluate(predictions)
+        print(f"-- (RMSE) for {key} {rmse}")
+
+    keys = chain(*pp1.select("key").distinct().orderBy('key').take(200))
     for k in keys:
         pp3 = pp2.filter(f"key = '{k}'")
-        print(f"-- {k}: {pp3.count()}")
+        esti = GeneralizedLinearRegression(family='gaussian', link='identity')
+        train_simple(pp3, esti, k)
 
 
 store_multiple_trained_models()

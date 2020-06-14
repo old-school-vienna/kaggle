@@ -1,0 +1,52 @@
+Ergebnisse Lineare Regerssion.
+Daten: Sales5_Ab2011_InklPred.csv
+Ein Modell für alles:
++-----------------------------------------------------------+
+|model                                |mse       |state     |
+|-------------------------------------+----------+----------|
+|glr gaussian identity                |    1.2306|OK        | 
+|gradient boost regressor             |    2.8820|OK        |
++-----------------------------------------------------------+
+
+glr gaussian identity
+Root mean Squared Error für einzelne Produkte:
+FOODS_1_001 1.1945
+FOODS_1_002 0.737
+FOODS_1_003 1.150
+FOODS_1_004 8.045
+FOODS_1_005 1.987
+
+Root mean Squared Error für einzelne Produktegruppen:
+FOODS_1    2.63
+FOODS_2    2.32
+FOODS_3    4.93
+HOBBIES_1  2.08
+HOBBIES_2  0.71
+
+Root mean Squared Error für einzelne Produkte und Märkte:
+FOODS_1_001_CA_2 1.927
+FOODS_1_001_CA_3 1.998
+FOODS_1_001_CA_4 0.678
+FOODS_1_001_TX_1 1.377
+FOODS_1_001_TX_2 1.111
+FOODS_1_001_TX_3 0.862
+FOODS_1_001_WI_1 0.865
+FOODS_1_005_WI_2 1.401
+FOODS_1_006_CA_1 1.736
+FOODS_1_006_CA_2 1.894
+FOODS_1_006_CA_3 2.306
+FOODS_1_006_CA_4 1.602
+FOODS_1_006_TX_1 1.020
+FOODS_1_006_TX_2 1.065
+FOODS_1_006_TX_3 2.370
+FOODS_1_006_WI_1 2.068
+FOODS_1_006_WI_2 1.667
+FOODS_1_006_WI_3 2.192
+FOODS_1_008_CA_1 0.626
+
+
+
+
+
+
+ 
