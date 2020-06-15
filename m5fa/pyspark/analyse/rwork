@@ -1,0 +1,11 @@
+docker run \
+    --rm \
+    --name sp \
+    -e DATADIR=/opt/data \
+    -v /opt/wwa/prj/kaggle/m5fa/pyspark/analyse:/opt/project \
+    -v /opt/wwa/work/kaggle:/opt/data \
+    -p 4040:4040 \
+    myspark37 /opt/spark/bin/spark-submit --executor-memory 12G \
+        --driver-memory 12g --driver-java-options -Duser.timezone=CET \
+        /opt/project/$1 
+
