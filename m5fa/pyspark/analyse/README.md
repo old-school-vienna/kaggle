@@ -83,3 +83,10 @@ sps --executor-memory 25G --driver-memory 25g --driver-java-options -Duser.timez
 ```$bash
 sps --executor-memory 10G --driver-memory 10g --driver-java-options -Duser.timezone=CET analyse.py 
 ```
+
+pipenv
+```
+docker build -t pipenv -f DockerfilePipenv .
+
+docker run --user 501:20 -e HOME=/opt/project -it -v /Users/wwagner4/prj/kaggle/m5fa/pyspark/analyse:/opt/project pipenv bash
+```

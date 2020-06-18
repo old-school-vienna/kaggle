@@ -1,3 +1,7 @@
 nohup.out
 __pycache__
 target/
+.cache
+.virtualenvs
+bash_history
+
