@@ -1,17 +1,17 @@
+- try RandomForestRegressor 
 - build spark from source
 - integrate blast support
 - NativeSystemLAPACK
 - NativeRefLAPACK
 - refactor preprocessing.py
-- try RandomForestRegressor 
-- try GBTRegressor
-
-- create csv and submit to kaggle
+- build image with keras
 
 --work----------------------------------------------------------
-- create a submission dataframe
 
 --done----------------------------------------------------------
+- try GBTRegressor
+- create csv and submit to kaggle
+- create a submission dataframe
 - save returned model
 - try to return a model it from pipline
 - create a small dataset for testruns
