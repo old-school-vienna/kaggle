@@ -30,6 +30,7 @@ COPY Pipfile.lock .
 
 ENV LANG=EN
 ENV PIPENV_INSTALL_TIMEOUT=9000
+RUN pip3 install --upgrade pip
 RUN pipenv --python 3.7
 RUN pipenv install --dev --system --deploy  
 
