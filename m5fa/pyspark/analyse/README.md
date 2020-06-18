@@ -89,4 +89,6 @@ pipenv
 docker build -t pipenv -f DockerfilePipenv .
 
 docker run --user 501:20 -e HOME=/opt/project -it -v /Users/wwagner4/prj/kaggle/m5fa/pyspark/analyse:/opt/project pipenv bash
+
+docker run --user 499807169:499800513 -e HOME=/opt/project -it -v /Users/wwagner4/prj/kaggle/m5fa/pyspark/analyse:/opt/project pipenv bash
 ```
