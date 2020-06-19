@@ -4,11 +4,16 @@
 - NativeSystemLAPACK
 - NativeRefLAPACK
 - refactor preprocessing.py
-- build image with keras
 
+- make a submission using that net
 --work----------------------------------------------------------
+- create a single layered net
 
 --done----------------------------------------------------------
+- find number of input values: 3074
+
+
+- build image with keras
 - try GBTRegressor
 - create csv and submit to kaggle
 - create a submission dataframe
