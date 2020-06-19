@@ -5,12 +5,18 @@
 - NativeRefLAPACK
 - refactor preprocessing.py
 
-- make a submission using that net
+
+- build images on mlac
+
 --work----------------------------------------------------------
-- create a single layered net
+- make a submission using that net
 
 --done----------------------------------------------------------
 - find number of input values: 3074
+- create a single layered net
+- copy data to entelijan in order to load it from mlac
+-- wget http://entelijan.net/kaggle/Sales5_Ab2011_InklPred.7z
+-- wget http://entelijan.net/kaggle/Sales7_slim_2015.7z
 
 
 - build image with keras

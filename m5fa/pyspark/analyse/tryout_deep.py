@@ -1,3 +1,6 @@
+from tensorflow import keras
+from tensorflow.keras import layers
+
 import helpers as hlp
 from pyspark.sql import SparkSession
 import pyspark.sql.functions as F
@@ -14,4 +17,14 @@ def number_of_inputs():
         .take(1)[0].features
     print(f"number of inputs: {len(row1)}")
 
-number_of_inputs()
+
+def make_nn():
+    model = keras.Sequential()
+    model.add(keras.Input(shape=(3074,)))
+    model.add(layers.Dense(1500, activation="relu"))
+    model.add(layers.Dense(1, activation="relu"))
+
+    model.summary()
+
+
+make_nn()

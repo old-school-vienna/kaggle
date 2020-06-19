@@ -8,6 +8,7 @@ python_version = "3.7"
 
 [packages]
 elephas = "==0.4.3"
+pyspark-stubs = ">=2.4.0.post8"
 matplotlib = ">=3.2.1"
 Pandas = ">=1.0.4"
 
