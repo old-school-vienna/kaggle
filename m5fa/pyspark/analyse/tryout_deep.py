@@ -1,4 +1,4 @@
-from tensorflow import keras
+import tensorflow
 from tensorflow.keras import layers
 
 import helpers as hlp
