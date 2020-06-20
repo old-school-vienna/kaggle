@@ -1,9 +1,9 @@
-import tensorflow
+import pyspark.sql.functions as F
+from pyspark.sql import SparkSession
+from tensorflow import keras
 from tensorflow.keras import layers
 
 import helpers as hlp
-from pyspark.sql import SparkSession
-import pyspark.sql.functions as F
 
 
 def number_of_inputs():
