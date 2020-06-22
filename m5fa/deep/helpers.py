@@ -57,16 +57,27 @@ def _create_small_df(base_name: str, qual: str, train_size: int, test_size: int,
 
 
 def one_hot_row(r: Row) -> Row:
-    def c_to_dict(k: str, v: Any) -> dict:
-        if isinstance(v, Vector):
-            return dict([(f"{k}_{i}", float(v[i])) for i in range(len(v))])
-        else:
-            return {k: v}
+    def c_to_dict(d: dict, k: str, v: Any):
+        d.update({k: v})
 
-    d = r.asDict()
-    dicts: list = [c_to_dict(k, d[k]) for k in d.keys()]
-    di = dict(ChainMap(*dicts))
-    return Row(**di)
+    def cv_to_dict(d: dict, k: str, v: Any, l: int):
+        for i in range(l):
+            d.update({f"{k}_{i}": float(v[i])})
+
+    d1 = r.asDict()
+    do = {}
+    c_to_dict(do, 'year', d1['year'])
+    c_to_dict(do, 'month', d1['month'])
+    c_to_dict(do, 'dn', d1['dn'])
+    c_to_dict(do, 'snap', d1['snap'])
+    c_to_dict(do, 'flag_ram', d1['flag_ram'])
+    c_to_dict(do, 'sales', d1['sales'])
+    c_to_dict(do, 'Sales_Pred', d1['Sales_Pred'])
+    cv_to_dict(do, 'dept_id', d1['vdept_id'], 6)
+    cv_to_dict(do, 'item_id', d1['vitem_id'], 3048)
+    cv_to_dict(do, 'store_id', d1['vstore_id'], 9)
+    cv_to_dict(do, 'wday', d1['vwday'], 6)
+    return Row(**do)
 
 
 if __name__ == "__main__":
