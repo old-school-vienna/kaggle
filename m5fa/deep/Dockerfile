@@ -18,3 +18,6 @@ RUN pip install fastparquet==0.4.0
 RUN pip install python-snappy==0.5.4
 RUN pip install pyspark==3.0.0
 RUN pip install pytest
+
+RUN mkdir /opt/project
+WORKDIR /opt/project
