@@ -1,0 +1,10 @@
+docker run \
+    --rm \
+    --name sp \
+    -e DATADIR=/opt/data \
+    -v /home/wwagner4/prj/kaggle/m5fa/deep:/opt/project \
+    -v /data/kaggle:/opt/data \
+    -p 4040:4040 \
+    mytf /opt/spark/bin/spark-submit --executor-memory 20G \
+        --driver-memory 20g --driver-java-options -Duser.timezone=CET \
+        /opt/project/$1 

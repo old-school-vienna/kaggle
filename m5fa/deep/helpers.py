@@ -1,11 +1,9 @@
 import os
-from collections import ChainMap
 from pathlib import Path
 from typing import Any
 
 import pyspark.sql.functions as F
 from pyspark import Row
-from pyspark.ml.linalg import Vector
 from pyspark.sql import DataFrame, SparkSession
 
 
