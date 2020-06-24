@@ -6,6 +6,7 @@ import pandas as pd
 from pyspark.sql import SparkSession
 
 import helpers as hlp
+import numpy as np
 
 
 def get_datadir() -> Path:
@@ -37,8 +38,8 @@ def read_parquet():
         .appName(os.path.basename("preporcessing")) \
         .getOrCreate()
     df: pd.DataFrame = hlp.readFromDatadirParquet(spark, 'sp5_02').toPandas()
-    print(df.keys())
-    print(df)
+    print(np.sort(df.keys().values))
+    print(df.shape)
 
 
 def read_csv():

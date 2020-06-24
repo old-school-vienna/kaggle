@@ -1,4 +1,5 @@
 import os
+from pprint import pprint
 
 import pyspark.sql.types as T
 from pyspark import SQLContext
@@ -37,12 +38,23 @@ def preprocessing(sp: SparkSession):
     print("--- preprocessing -----------------------")
 
     nam = 'sp5_02'
-    df01 = read_csv(sp) \
-        .where(F.col('item_id').isin("FOODS_1_001", "HOBBIES_1_021", "HOUSEHOLD_2_491"))
+    fvars = ['year', 'month', 'dn', 'wday', 'snap', 'dept_id', 'flag_ram']
+    catvars = ['dept_id', 'wday']
+    df01: DataFrame = read_csv(sp) \
+        .where(F.col('item_id').isin("FOODS_1_001", "HOBBIES_1_021", "HOUSEHOLD_2_491")) \
+        .withColumn('subm_id', F.concat(F.col('item_id'), F.lit('_'), F.col('store_id'))) \
+        .drop('item_id', 'store_id', 'Sales_Pred') \
+        .groupBy(*fvars) \
+        .pivot('subm_id') \
+        .agg(F.sum('sales')) \
+        .na.fill(0.0) \
+        .orderBy('dn')
+
     df01.show()
+    df01.describe().show()
+    pprint(df01.toPandas().dtypes)
 
     stages = []
-    catvars = ['dept_id', 'item_id', 'store_id', 'wday']
     for v in catvars:
         stages += [StringIndexer(inputCol=v,
                                  outputCol=f"i{v}")]
@@ -52,7 +64,8 @@ def preprocessing(sp: SparkSession):
     pip: Pipeline = Pipeline(stages=stages)
     pipm = pip.fit(df01)
     df01: DataFrame = pipm.transform(df01)
-    ppdf = df01.drop('idept_id', 'iitem_id', 'istore_id', 'iwday')
+    catvarsi = [f"i{n}" for n in catvars]
+    ppdf = df01.drop(*catvarsi)
 
     rdd1 = ppdf.rdd.map(hlp.one_hot_row)
 
@@ -61,7 +74,6 @@ def preprocessing(sp: SparkSession):
     df1.show()
     print(f"--- Writing: '{nam}'")
     hlp.writeToDatadirParquet(df1, nam)
-
     sp.stop()
 
 
