@@ -58,8 +58,9 @@ def one_hot_row(r: Row) -> Row:
     def c_to_dict(d: dict, k: str, v: Any):
         d.update({k: v})
 
-    def cv_to_dict(d: dict, k: str, v: Any, l: int):
-        for i in range(l):
+    def cv_to_dict(d: dict, k: str, v: Any):
+        le = len(v)
+        for i in range(le):
             d.update({f"{k}_{i}": float(v[i])})
 
     d1 = r.asDict()
@@ -71,10 +72,10 @@ def one_hot_row(r: Row) -> Row:
     c_to_dict(do, 'flag_ram', d1['flag_ram'])
     c_to_dict(do, 'sales', d1['sales'])
     c_to_dict(do, 'Sales_Pred', d1['Sales_Pred'])
-    cv_to_dict(do, 'dept_id', d1['vdept_id'], 6)
-    cv_to_dict(do, 'item_id', d1['vitem_id'], 3048)
-    cv_to_dict(do, 'store_id', d1['vstore_id'], 9)
-    cv_to_dict(do, 'wday', d1['vwday'], 6)
+    cv_to_dict(do, 'dept_id', d1['vdept_id'])
+    cv_to_dict(do, 'item_id', d1['vitem_id'])
+    cv_to_dict(do, 'store_id', d1['vstore_id'])
+    cv_to_dict(do, 'wday', d1['vwday'])
     return Row(**do)
 
 

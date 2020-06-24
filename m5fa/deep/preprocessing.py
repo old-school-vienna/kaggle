@@ -5,19 +5,12 @@ from pyspark import SQLContext
 from pyspark.ml import Pipeline
 from pyspark.ml.feature import StringIndexer, OneHotEncoder
 from pyspark.sql import DataFrame, SparkSession
+import pyspark.sql.functions as F
 
 import helpers as hlp
 
 
-def preprocessing():
-    print("--- preprocessing -----------------------")
-
-    spark = SparkSession.builder \
-        .appName(os.path.basename("preporcessing")) \
-        .config("spark.driver.memory", "25g") \
-        .getOrCreate()
-
-    nam = 'sp5_02'
+def read_csv(spark: SparkSession) -> DataFrame:
     datadir = hlp.get_datadir()
 
     schema = T.StructType([
@@ -37,7 +30,16 @@ def preprocessing():
     csv_path = datadir / "Sales5_Ab2011_InklPred.csv"
     print(f"--- Reading: '{csv_path}'")
 
-    sales5: DataFrame = spark.read.csv(str(csv_path), header='true', schema=schema)
+    return spark.read.csv(str(csv_path), header='true', schema=schema)
+
+
+def preprocessing(sp: SparkSession):
+    print("--- preprocessing -----------------------")
+
+    nam = 'sp5_02'
+    df01 = read_csv(sp) \
+        .where(F.col('item_id').isin("FOODS_1_001", "HOBBIES_1_021", "HOUSEHOLD_2_491"))
+    df01.show()
 
     stages = []
     catvars = ['dept_id', 'item_id', 'store_id', 'wday']
@@ -48,20 +50,24 @@ def preprocessing():
                              outputCols=[f"v{v}" for v in catvars])]
 
     pip: Pipeline = Pipeline(stages=stages)
-    pipm = pip.fit(sales5)
-    df: DataFrame = pipm.transform(sales5)
-    ppdf = df.drop('idept_id', 'iitem_id', 'istore_id', 'iwday')
+    pipm = pip.fit(df01)
+    df01: DataFrame = pipm.transform(df01)
+    ppdf = df01.drop('idept_id', 'iitem_id', 'istore_id', 'iwday')
 
     rdd1 = ppdf.rdd.map(hlp.one_hot_row)
 
-    ctx: SQLContext = SQLContext.getOrCreate(spark.sparkContext)
+    ctx: SQLContext = SQLContext.getOrCreate(sp.sparkContext)
     df1 = ctx.createDataFrame(rdd1)
     df1.show()
     print(f"--- Writing: '{nam}'")
     hlp.writeToDatadirParquet(df1, nam)
 
-    spark.stop()
+    sp.stop()
 
 
 if __name__ == '__main__':
-    preprocessing()
+    spark = SparkSession.builder \
+        .appName(os.path.basename("preporcessing")) \
+        .getOrCreate()
+
+    preprocessing(spark)

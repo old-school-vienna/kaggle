@@ -3,6 +3,9 @@ import os
 from pathlib import Path
 
 import pandas as pd
+from pyspark.sql import SparkSession
+
+import helpers as hlp
 
 
 def get_datadir() -> Path:
@@ -30,30 +33,12 @@ def read_parquet_folder_as_pandas(path):
 
 
 def read_parquet():
-    p = Path(get_datadir()) / 's5_02.parquet'
-    print(f"reading {p}")
-    df: pd.DataFrame = read_parquet_folder_as_pandas(str(p))
+    spark = SparkSession.builder \
+        .appName(os.path.basename("preporcessing")) \
+        .getOrCreate()
+    df: pd.DataFrame = hlp.readFromDatadirParquet(spark, 'sp5_02').toPandas()
     print(df.keys())
-
-    cat_vars = ['year', 'month', 'wday', 'snap', 'dept_id', 'item_id', 'store_id', 'flag_ram']
-    cont_vars = ['dn', 'sales', 'Sales_Pred']
-
-    df1 = None
-    for cv in cat_vars:
-        du = pd.get_dummies(df[cv], prefix=cv)
-        if df1 is None:
-            df1 = du
-        else:
-            df1 = df1.join(du)
-
-    for cv in cont_vars:
-        df1 = df1.join(df[cv])
-
-    df1 = df1.sort_values(by=['dn'])
-
-    print(len(df1.keys()))
-    print(df1.keys())
-    print(df1)
+    print(df)
 
 
 def read_csv():
