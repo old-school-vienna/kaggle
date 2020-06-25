@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 
 import pandas as pd
+from pprint import pprint
 from pyspark.sql import SparkSession
 
 import helpers as hlp
@@ -70,4 +71,11 @@ def read_csv():
     print(df1)
 
 
-read_parquet()
+def concat_lists():
+    l1 = [0, 1, 2]
+    l2 = [4, 5, 6]
+    l3 = (l1 + l2)
+    pprint(l3)
+
+
+concat_lists()

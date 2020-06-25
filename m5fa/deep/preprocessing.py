@@ -65,7 +65,7 @@ def preprocessing(sp: SparkSession):
     pipm = pip.fit(df01)
     df01: DataFrame = pipm.transform(df01)
     catvarsi = [f"i{n}" for n in catvars]
-    ppdf = df01.drop(*catvarsi)
+    ppdf = df01.drop(*(catvarsi + catvars))
 
     rdd1 = ppdf.rdd.map(hlp.one_hot_row)
 

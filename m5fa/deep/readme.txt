@@ -1,7 +1,7 @@
 # Docker build
-docker build -t mytf docker .
+docker build -t mytf docker
 # On ppc
-docker build -t mytf docker_ppc .
+docker build -t mytf docker_ppc
 
 # running a script
 ./rxxx script.py
