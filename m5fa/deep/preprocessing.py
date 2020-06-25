@@ -50,10 +50,6 @@ def preprocessing(sp: SparkSession):
         .na.fill(0.0) \
         .orderBy('dn')
 
-    df01.show()
-    df01.describe().show()
-    pprint(df01.toPandas().dtypes)
-
     stages = []
     for v in catvars:
         stages += [StringIndexer(inputCol=v,
@@ -80,6 +76,7 @@ def preprocessing(sp: SparkSession):
 if __name__ == '__main__':
     spark = SparkSession.builder \
         .appName(os.path.basename("preporcessing")) \
+        .config("spark.sql.pivotMaxValues", 100000) \
         .getOrCreate()
 
     preprocessing(spark)
