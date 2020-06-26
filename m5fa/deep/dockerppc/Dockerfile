@@ -1,4 +1,4 @@
-FROM dockerregistry.seu.test.sozvers.at/ibmcom/tensorflow-ppc64le:2.2.0
+FROM dockerregistry.seu.test.sozvers.at/ibmcom/tensorflow-ppc64le:latest-gpu-py3
 
 RUN apt-get update
 RUN apt-get install -y openjdk-8-jdk-headless
