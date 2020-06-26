@@ -1,19 +1,20 @@
+from pprint import pprint
+
+import numpy
 import pandas as pd
 import tensorflow as tf
-from pprint import pprint
 from pyspark.sql import SparkSession
 from tensorflow import keras
 from tensorflow.keras import layers
-import tensorflow_docs as tfdocs
 
 import helpers as hlp
 
 
-def build_model():
+def build_model(num_input: int, num_output: int):
     mo = keras.Sequential([
-        layers.Dense(15, activation='relu', input_shape=[12]),
-        layers.Dense(15, activation='relu'),
-        layers.Dense(30)
+        layers.Dense(num_input, activation='relu', input_shape=[num_input]),
+        layers.Dense(num_output, activation='relu'),
+        layers.Dense(num_output)
     ])
 
     optimizer = tf.keras.optimizers.RMSprop(0.001)
@@ -25,34 +26,23 @@ def build_model():
 
 
 def train(spark: SparkSession):
-    xvars = ['FOODS_1_001_CA_1', 'FOODS_1_001_CA_2', 'FOODS_1_001_CA_3',
-             'FOODS_1_001_CA_4', 'FOODS_1_001_TX_1', 'FOODS_1_001_TX_2',
-             'FOODS_1_001_TX_3', 'FOODS_1_001_WI_1', 'FOODS_1_001_WI_2',
-             'FOODS_1_001_WI_3', 'HOBBIES_1_021_CA_1', 'HOBBIES_1_021_CA_2',
-             'HOBBIES_1_021_CA_3', 'HOBBIES_1_021_CA_4', 'HOBBIES_1_021_TX_1',
-             'HOBBIES_1_021_TX_2', 'HOBBIES_1_021_TX_3', 'HOBBIES_1_021_WI_1',
-             'HOBBIES_1_021_WI_2', 'HOBBIES_1_021_WI_3', 'HOUSEHOLD_2_491_CA_1',
-             'HOUSEHOLD_2_491_CA_2', 'HOUSEHOLD_2_491_CA_3', 'HOUSEHOLD_2_491_CA_4',
-             'HOUSEHOLD_2_491_TX_1', 'HOUSEHOLD_2_491_TX_2', 'HOUSEHOLD_2_491_TX_3',
-             'HOUSEHOLD_2_491_WI_1', 'HOUSEHOLD_2_491_WI_2', 'HOUSEHOLD_2_491_WI_3']
-    yvars = ['dn', 'flag_ram', 'month', 'snap', 'vdept_id_0', 'vdept_id_1',
-             'vwday_0', 'vwday_1', 'vwday_2', 'vwday_3', 'vwday_4', 'vwday_5', 'year']
-
-    print(f"x (predictors) {len(xvars)}")
-    print(f"y (labels) {len(yvars)}")
-
     df: pd.DataFrame = hlp.readFromDatadirParquet(spark, 'sp5_02').toPandas()
 
     df = df.astype(float)
 
     train_dataset = df.sample(frac=0.8, random_state=0)
     test_dataset = df.drop(train_dataset.index)
+
     print(train_dataset.shape)
     print(test_dataset.shape)
 
-    model = build_model()
+    allvars = df.keys()
+    xvars = ['dn', 'flag_ram', 'month', 'snap', 'vdept_id_0', 'vdept_id_1',
+             'vwday_0', 'vwday_1', 'vwday_2', 'vwday_3', 'vwday_4', 'vwday_5', 'year']
+    yvars = [x for x in allvars if x not in xvars]
+    pprint(xvars)
+    pprint(yvars)
 
-    model.summary()
 
     train_data = train_dataset[xvars]
     train_labels = train_dataset[yvars]
@@ -65,13 +55,29 @@ def train(spark: SparkSession):
     print(train_labels.shape)
     print(test_labels.shape)
 
-    EPOCHS = 1000
+    epochs = 1000
+    cb = tf.keras.callbacks.EarlyStopping(
+        monitor='val_loss', min_delta=0, patience=0, verbose=0, mode='auto',
+        baseline=None, restore_best_weights=False
+    )
 
+    model = build_model(len(xvars), len(yvars))
     history = model.fit(
         train_data, train_labels,
-        epochs=EPOCHS, validation_split=0.2, verbose=0,
-        callbacks=[tfdocs.modeling.EpochDots()])
-    pprint(history)
+        epochs=epochs, validation_split=0.2, verbose=0,
+        callbacks=[cb],
+    )
+    print("----HISTORY------------------------------------------------------------")
+    for h in history.history['mse']:
+        pprint(h)
+    print("-----------------------------------------------------------------------")
+    test_predictions = model.predict(test_data)
+
+    pprint(test_labels.shape)
+    pprint(test_predictions.shape)
+
+    mse = ((test_labels.values - test_predictions) ** 2).mean(axis=0)
+    print(f"-- mse {numpy.mean(mse)}")
 
 
 if __name__ == "__main__":
