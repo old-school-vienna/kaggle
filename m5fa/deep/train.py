@@ -1,4 +1,5 @@
 from pprint import pprint
+from typing import List
 
 import numpy
 import pandas as pd
@@ -10,19 +11,59 @@ from tensorflow.keras import layers
 import helpers as hlp
 
 
-def build_model(num_input: int, num_output: int):
-    mo = keras.Sequential([
-        layers.Dense(num_input, activation='relu', input_shape=[num_input]),
-        layers.Dense(num_output, activation='relu'),
-        layers.Dense(num_output)
-    ])
+def build_model(num_input: int, num_output: int, ifac_in: List[float], ifac_out: List[float]):
+    mo = keras.Sequential()
+
+    mo.add(layers.Dense(num_input, activation='relu', input_shape=[num_input]))
+    for f in ifac_in:
+        n = int(f * num_input)
+        mo.add(layers.Dense(n, activation='relu'))
+    for f in ifac_out:
+        n = int(f * num_input)
+        mo.add(layers.Dense(n, activation='relu'))
+    mo.add(layers.Dense(num_output))
 
     optimizer = tf.keras.optimizers.RMSprop(0.001)
-
     mo.compile(loss='mse',
                optimizer=optimizer,
                metrics=['mae', 'mse'])
     return mo
+
+
+def train1(net: tuple, data: dict) -> (str, float):
+    model = build_model(len(data['xvars']), len(data['yvars']), net[0], net[1])
+
+    cb = tf.keras.callbacks.EarlyStopping(
+        monitor='val_loss', min_delta=0, patience=0, verbose=0, mode='auto',
+        baseline=None, restore_best_weights=False
+    )
+
+    history = model.fit(
+        data['train_data'], data['train_labels'],
+        epochs=1000, validation_split=0.2, verbose=0,
+        callbacks=[cb],
+    )
+    print("----HISTORY------------------------------------------------------------")
+    for h in history.history['mse']:
+        pprint(h)
+    print("-----------------------------------------------------------------------")
+    test_predictions = model.predict(data['test_data'])
+
+    pprint(data['test_labels'].shape)
+    pprint(test_predictions.shape)
+
+    error = ((data['test_labels'].values - test_predictions) ** 2).mean(axis=0)[0]
+    nam = nnam(net)
+    print(f"---- mse of {nam}: {error:.3f}")
+    return (nam, error)
+
+
+def nnam(net) -> str:
+    def nam1(list) -> str:
+        fs = [f"{x:.2f}" for x in list]
+        return "-".join(fs)
+
+    return f"|{nam1(net[0])}|{nam1(net[1])}|"
 
 
 def train(spark: SparkSession):
@@ -43,7 +84,6 @@ def train(spark: SparkSession):
     pprint(xvars)
     pprint(yvars)
 
-
     train_data = train_dataset[xvars]
     train_labels = train_dataset[yvars]
     test_data = test_dataset[xvars]
@@ -55,29 +95,25 @@ def train(spark: SparkSession):
     print(train_labels.shape)
     print(test_labels.shape)
 
-    epochs = 1000
-    cb = tf.keras.callbacks.EarlyStopping(
-        monitor='val_loss', min_delta=0, patience=0, verbose=0, mode='auto',
-        baseline=None, restore_best_weights=False
-    )
+    data = {
+        'xvars': xvars,
+        'yvars': yvars,
+        'train_data': train_data,
+        'train_labels': train_labels,
+        'test_data': test_data,
+        'test_labels': test_labels,
+    }
 
-    model = build_model(len(xvars), len(yvars))
-    history = model.fit(
-        train_data, train_labels,
-        epochs=epochs, validation_split=0.2, verbose=0,
-        callbacks=[cb],
-    )
-    print("----HISTORY------------------------------------------------------------")
-    for h in history.history['mse']:
-        pprint(h)
-    print("-----------------------------------------------------------------------")
-    test_predictions = model.predict(test_data)
-
-    pprint(test_labels.shape)
-    pprint(test_predictions.shape)
-
-    mse = ((test_labels.values - test_predictions) ** 2).mean(axis=0)
-    print(f"-- mse {numpy.mean(mse)}")
+    nets = [
+        ([1.0],           [1.0]),
+        ([1.0, 1.5],      [1.0, 1.0]),
+        ([1.0, 1.5],      [0.5, 0.5, 1.0, 1.0, 1.0]),
+        ([1.0, 1.5, 2.0], [0.5, 0.5, 1.0, 1.0, 1.0, 1.0]),
+    ]
+    results = [train1(net, data) for net in nets]
+    print("--RESULTS-----------------------------------------------")
+    for r in results:
+        print(f"{r[0]:50} - {r[1]:10.4f}")
 
 
 if __name__ == "__main__":
