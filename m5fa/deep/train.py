@@ -11,7 +11,7 @@ from tensorflow.keras import layers
 import helpers as hlp
 
 
-def build_model(num_input: int, num_output: int, ifac_in: List[float], ifac_out: List[float]):
+def build_model(num_input: int, num_output: int, ifac_in: List[float], ifac_out: List[float], stepw: float):
     mo = keras.Sequential()
 
     mo.add(layers.Dense(num_input, activation='relu', input_shape=[num_input]))
@@ -23,15 +23,15 @@ def build_model(num_input: int, num_output: int, ifac_in: List[float], ifac_out:
         mo.add(layers.Dense(n, activation='relu'))
     mo.add(layers.Dense(num_output))
 
-    optimizer = tf.keras.optimizers.RMSprop(0.001)
+    optimizer = tf.keras.optimizers.RMSprop(stepw)
     mo.compile(loss='mse',
                optimizer=optimizer,
                metrics=['mae', 'mse'])
     return mo
 
 
-def train1(net: tuple, data: dict) -> (str, float):
-    model = build_model(len(data['xvars']), len(data['yvars']), net[0], net[1])
+def train1(net: tuple, stepw: float, data: dict) -> float:
+    model = build_model(len(data['xvars']), len(data['yvars']), net[0], net[1], stepw)
 
     cb = tf.keras.callbacks.EarlyStopping(
         monitor='val_loss', min_delta=0, patience=0, verbose=0, mode='auto',
@@ -55,7 +55,7 @@ def train1(net: tuple, data: dict) -> (str, float):
     error = ((data['test_labels'].values - test_predictions) ** 2).mean(axis=0)[0]
     nam = nnam(net)
     print(f"---- mse of {nam}: {error:.3f}")
-    return (nam, error)
+    return error
 
 
 def nnam(net) -> str:
@@ -104,16 +104,24 @@ def train(spark: SparkSession):
         'test_labels': test_labels,
     }
 
+    stepws = [0.005, 0.001, 0.0001, 0.00001]
     nets = [
-        ([1.0],           [1.0]),
-        ([1.0, 1.5],      [1.0, 1.0]),
-        ([1.0, 1.5],      [0.5, 0.5, 1.0, 1.0, 1.0]),
+        ([1.0], [1.0]),
+        ([1.0, 1.5], [1.0, 1.0]),
+        ([1.0, 1.5], [0.5, 0.5, 1.0, 1.0, 1.0]),
         ([1.0, 1.5, 2.0], [0.5, 0.5, 1.0, 1.0, 1.0, 1.0]),
+        ([1.0, 1.5, 2.0], [0.1, 0.5, 0.5, 1.0, 1.0, 1.0, 1.0, 1.0]),
     ]
-    results = [train1(net, data) for net in nets]
-    print("--RESULTS-----------------------------------------------")
-    for r in results:
-        print(f"{r[0]:50} - {r[1]:10.4f}")
+    results = []
+    for stepw in stepws:
+        for net in nets:
+            err = [train1(net, stepw, data) for net in nets]
+            nam = nnam(net)
+            results.append((stepw, nam, err))
+
+    print("-------RESULTS-------------------------------------------------")
+    for stepw, nam, err in results:
+        print(f"{stepw:10.5f} {nam:50} - {err:10.4f}")
 
 
 if __name__ == "__main__":
