@@ -43,18 +43,18 @@ def build_model1(num_input: int, num_output: int):
 
 
 def build_model2(num_input: int, num_output: int):
-    return build_model_gen(num_input, num_output, [], [1.0, 1.0, 1.0, 1.0], 0.001)
+    return build_model_gen(num_input, num_output, ([], [1.0, 1.0, 1.0, 1.0]), 0.001)
     # return build_model_gen(num_input, num_output, [], [1.0], 0.001)
 
 
-def build_model_gen(num_input: int, num_output: int, ifac_in: List[float], ifac_out: List[float], stepw: float):
+def build_model_gen(num_input: int, num_output: int, net: tuple, stepw: float):
     mo = keras.Sequential()
 
     mo.add(layers.Dense(num_input, activation='relu', input_shape=[num_input]))
-    for f in ifac_in:
+    for f in net[0]:
         n = int(f * num_input)
         mo.add(layers.Dense(n, activation='relu'))
-    for f in ifac_out:
+    for f in net[1]:
         n = int(f * num_input)
         mo.add(layers.Dense(n, activation='relu'))
     mo.add(layers.Dense(num_output))
@@ -105,7 +105,7 @@ def train(sp: SparkSession):
     )
     print("----HISTORY------------------------------------------------------------")
     tmses = history.history['mse']
-    pprint(f"-- train mse {len(tmses)} {tmses}")
+    print(f"-- train mse {len(tmses)} {tmses}")
     print("-----------------------------------------------------------------------")
 
     test_predictions = model.predict(test_data)
