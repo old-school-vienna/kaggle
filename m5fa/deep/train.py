@@ -1,4 +1,5 @@
 from pprint import pprint
+from typing import List
 
 import numpy
 import pandas as pd
@@ -41,6 +42,30 @@ def build_model1(num_input: int, num_output: int):
     return mo
 
 
+def build_model2(num_input: int, num_output: int):
+    return build_model_gen(num_input, num_output, [], [1.0, 1.0, 1.0, 1.0], 0.001)
+    # return build_model_gen(num_input, num_output, [], [1.0], 0.001)
+
+
+def build_model_gen(num_input: int, num_output: int, ifac_in: List[float], ifac_out: List[float], stepw: float):
+    mo = keras.Sequential()
+
+    mo.add(layers.Dense(num_input, activation='relu', input_shape=[num_input]))
+    for f in ifac_in:
+        n = int(f * num_input)
+        mo.add(layers.Dense(n, activation='relu'))
+    for f in ifac_out:
+        n = int(f * num_input)
+        mo.add(layers.Dense(n, activation='relu'))
+    mo.add(layers.Dense(num_output))
+
+    optimizer = tf.keras.optimizers.RMSprop(stepw)
+    mo.compile(loss='mse',
+               optimizer=optimizer,
+               metrics=['mae', 'mse'])
+    return mo
+
+
 def train(spark: SparkSession):
     df: pd.DataFrame = hlp.readFromDatadirParquet(spark, 'sp5_02').toPandas()
 
@@ -59,7 +84,6 @@ def train(spark: SparkSession):
     pprint(xvars)
     pprint(yvars)
 
-
     train_data = train_dataset[xvars]
     train_labels = train_dataset[yvars]
     test_data = test_dataset[xvars]
@@ -77,7 +101,7 @@ def train(spark: SparkSession):
         baseline=None, restore_best_weights=False
     )
 
-    model = build_model1(len(xvars), len(yvars))
+    model = build_model2(len(xvars), len(yvars))
     history = model.fit(
         train_data, train_labels,
         epochs=epochs, validation_split=0.2, verbose=0,
