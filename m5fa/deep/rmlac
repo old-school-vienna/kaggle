@@ -4,7 +4,7 @@ docker run \
     -e DATADIR=/opt/data \
     -v /home/wwa/prj/kaggle/m5fa/deep:/opt/project \
     -v /data/spark/data:/opt/data \
-    -p 4040:80 \
-    mytf /opt/spark/bin/spark-submit --executor-memory 140G \
-        --driver-memory 140g --driver-java-options -Duser.timezone=CET \
+    -p 4040:4040 \
+    mytf /opt/spark/bin/spark-submit --executor-memory 200G \
+        --driver-memory 200g --driver-java-options -Duser.timezone=CET \
         /opt/project/$1 
