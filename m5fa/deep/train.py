@@ -11,15 +11,36 @@ from tensorflow.keras import layers
 import helpers as hlp
 
 
-def build_model(num_input: int, num_output: int, ifac_in: List[float], ifac_out: List[float], stepw: float):
+def nodes(fact: float, n: int) -> int:
+    return int(n * fact)
+
+
+def nnam(net, nin: int, nout: int) -> str:
+    def nam1(li, n) -> list:
+        def nodes1(f: float) -> str:
+            non = nodes(f, n)
+            if non > 1000000:
+                return f"{int(non / 1000000)}m"
+            elif non > 1000:
+                return f"{int(non / 1000)}k"
+            else:
+                return f"{non}"
+
+        return [nodes1(x) for x in li]
+
+    alln = nam1(net[0], nin) + nam1(net[1], nout)
+    return '-'.join(alln)
+
+
+def build_model_gen(num_input: int, num_output: int, net: tuple, stepw: float):
     mo = keras.Sequential()
 
     mo.add(layers.Dense(num_input, activation='relu', input_shape=[num_input]))
-    for f in ifac_in:
-        n = int(f * num_input)
+    for f in net[0]:
+        n = nodes(f, num_input)
         mo.add(layers.Dense(n, activation='relu'))
-    for f in ifac_out:
-        n = int(f * num_input)
+    for f in net[1]:
+        n = nodes(f, num_output)
         mo.add(layers.Dense(n, activation='relu'))
     mo.add(layers.Dense(num_output))
 
@@ -30,98 +51,83 @@ def build_model(num_input: int, num_output: int, ifac_in: List[float], ifac_out:
     return mo
 
 
-def train1(net: tuple, stepw: float, data: dict) -> float:
-    model = build_model(len(data['xvars']), len(data['yvars']), net[0], net[1], stepw)
-
-    cb = tf.keras.callbacks.EarlyStopping(
-        monitor='val_loss', min_delta=0, patience=0, verbose=0, mode='auto',
-        baseline=None, restore_best_weights=False
-    )
-
-    history = model.fit(
-        data['train_data'], data['train_labels'],
-        epochs=1000, validation_split=0.2, verbose=0,
-        callbacks=[cb],
-    )
-    print("----HISTORY------------------------------------------------------------")
-    for h in history.history['mse']:
-        pprint(h)
-    print("-----------------------------------------------------------------------")
-    test_predictions = model.predict(data['test_data'])
-
-    pprint(data['test_labels'].shape)
-    pprint(test_predictions.shape)
-
-    error = ((data['test_labels'].values - test_predictions) ** 2).mean(axis=0)[0]
-    nam = nnam(net)
-    print(f"---- mse of {nam}: {error:.3f}")
-    return error
-
-
-def nnam(net) -> str:
-    def nam1(list) -> str:
-        fs = [f"{x:.2f}" for x in list]
-        return "-".join(fs)
-
-    return f"|{nam1(net[0])}|{nam1(net[1])}|"
-
-
-def train(spark: SparkSession):
-    df: pd.DataFrame = hlp.readFromDatadirParquet(spark, 'sp5_02').toPandas()
-
+def train(sp: SparkSession):
+    df: pd.DataFrame = hlp.readFromDatadirParquet(sp, 'sp5_02').toPandas()
     df = df.astype(float)
 
     train_dataset = df.sample(frac=0.8, random_state=0)
     test_dataset = df.drop(train_dataset.index)
 
-    print(train_dataset.shape)
-    print(test_dataset.shape)
-
     allvars = df.keys()
     xvars = ['dn', 'flag_ram', 'month', 'snap', 'vdept_id_0', 'vdept_id_1',
              'vwday_0', 'vwday_1', 'vwday_2', 'vwday_3', 'vwday_4', 'vwday_5', 'year']
     yvars = [x for x in allvars if x not in xvars]
-    pprint(xvars)
-    pprint(yvars)
+    pprint(f"-- predictors X: {xvars}")
+    pprint(f"-- labels     y: {yvars}")
 
     train_data = train_dataset[xvars]
     train_labels = train_dataset[yvars]
     test_data = test_dataset[xvars]
     test_labels = test_dataset[yvars]
-    print("data")
-    print(train_data.shape)
-    print(test_data.shape)
-    print("labels")
-    print(train_labels.shape)
-    print(test_labels.shape)
+    print("----DATA-----------------------------------------------------------------------")
+    print(f"-- train data: {train_data.shape}")
+    print(f"-- train labels: {train_labels.shape}")
+    print(f"-- test data: {test_data.shape}")
+    print(f"-- test labels: {test_labels.shape}")
+    print("-------------------------------------------------------------------------------")
+    nin = len(xvars)
+    nout = len(yvars)
 
-    data = {
-        'xvars': xvars,
-        'yvars': yvars,
-        'train_data': train_data,
-        'train_labels': train_labels,
-        'test_data': test_data,
-        'test_labels': test_labels,
-    }
-
-    stepws = [0.005, 0.001, 0.0001, 0.00001]
+    stepw = 0.001
     nets = [
-        ([1.0], [1.0]),
-        ([1.0, 1.5], [1.0, 1.0]),
-        ([1.0, 1.5], [0.5, 0.5, 1.0, 1.0, 1.0]),
-        ([1.0, 1.5, 2.0], [0.5, 0.5, 1.0, 1.0, 1.0, 1.0]),
-        ([1.0, 1.5, 2.0], [0.1, 0.5, 0.5, 1.0, 1.0, 1.0, 1.0, 1.0]),
+        ([], [1.]),
+        ([], [0.5, 1.]),
+        ([], [1., 1.]),
+        ([], [1., 1., 1.]),
+        ([], [1., 1., 1., 1.]),
+        ([], [1., 1., 1., 1., 1.]),
+        ([1.], [1., 1.]),
+        ([1., 2.], [1., 1.]),
+        ([1., 2., 2.], [1., 1.]),
     ]
     results = []
-    for stepw in stepws:
-        for net in nets:
-            err = train1(net, stepw, data)
-            nam = nnam(net)
-            results.append((stepw, nam, err))
+    for net in nets:
+        mse = train1(net, stepw, nin, nout, test_data, test_labels, train_data, train_labels)
+        results.append((nnam(net, nin, nout), mse))
 
-    print("-------RESULTS-------------------------------------------------")
-    for stepw, nam, err in results:
-        print(f"{stepw:10.5f} {nam:50} - {err:10.4f}")
+    print("----RESULTS (final)---------------------------------------------------------------")
+    for nam, mse in results:
+        print(f"-- {nam:50} - {mse:10.4f}")
+    print("----------------------------------------------------------------------------------")
+
+
+def train1(net: tuple, stepw: float,
+           nin: int, nout: int,
+           test_data: pd.DataFrame, test_labels: pd.DataFrame,
+           train_data: pd.DataFrame, train_labels: pd.DataFrame) -> float:
+    model = build_model_gen(nin, nout, net, stepw=stepw)
+    cb = tf.keras.callbacks.EarlyStopping(
+        monitor='val_loss', min_delta=0, patience=0, verbose=0, mode='auto',
+        baseline=None, restore_best_weights=False
+    )
+    history = model.fit(
+        train_data, train_labels,
+        epochs=1000, validation_split=0.2, verbose=0,
+        callbacks=[cb],
+    )
+    print("----HISTORY------------------------------------------------------------")
+    tmses = history.history['mse']
+    print(f"-- train mse {len(tmses)} {tmses}")
+    print("-----------------------------------------------------------------------")
+    test_predictions = model.predict(test_data)
+    mse = ((test_labels.values - test_predictions) ** 2).mean(axis=0)
+    msem = numpy.mean(mse)
+    mses = numpy.sum(mse)
+    print("----RESULT------------------------------------------------------------")
+    print(f"-- mse mean: {msem:10.4f}")
+    print(f"-- mse sum:  {mses:10.4f}")
+    print("----------------------------------------------------------------------")
+    return msem
 
 
 if __name__ == "__main__":
