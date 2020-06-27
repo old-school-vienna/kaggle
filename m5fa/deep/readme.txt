@@ -1,6 +1,8 @@
 # Docker build
 
 - docker build -t mytf docker
+## on mlac
+- nohup docker build -t mytfcpu dockerppc/ > nohupb.out 2>&1 &
 
 # On ppc
 # Depending on what is your bas image one of the following
