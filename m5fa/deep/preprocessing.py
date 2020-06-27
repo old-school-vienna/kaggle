@@ -11,7 +11,7 @@ import pyspark.sql.functions as F
 import helpers as hlp
 
 
-def read_csv(spark: SparkSession) -> DataFrame:
+def read_csv(sp: SparkSession) -> DataFrame:
     datadir = hlp.get_datadir()
 
     schema = T.StructType([
@@ -31,17 +31,17 @@ def read_csv(spark: SparkSession) -> DataFrame:
     csv_path = datadir / "Sales5_Ab2011_InklPred.csv"
     print(f"--- Reading: '{csv_path}'")
 
-    return spark.read.csv(str(csv_path), header='true', schema=schema)
+    return sp.read.csv(str(csv_path), header='true', schema=schema)
 
 
-def preprocessing(sp: SparkSession):
-    print("--- preprocessing -----------------------")
-
-    nam = 'sp5_02'
-    fvars = ['year', 'month', 'dn', 'wday', 'snap', 'dept_id', 'flag_ram']
-    catvars = ['dept_id', 'wday']
-    df01: DataFrame = read_csv(sp) \
+def read(sp: SparkSession) -> DataFrame:
+    print("--- read -----------------------")
+    """
+        The where clause for small datasets    
         .where(F.col('item_id').isin("FOODS_1_001", "HOBBIES_1_021", "HOUSEHOLD_2_491")) \
+    """
+    fvars = ['year', 'month', 'dn', 'wday', 'snap', 'dept_id', 'flag_ram']
+    return read_csv(sp) \
         .withColumn('subm_id', F.concat(F.col('item_id'), F.lit('_'), F.col('store_id'))) \
         .drop('item_id', 'store_id', 'Sales_Pred') \
         .groupBy(*fvars) \
@@ -50,7 +50,13 @@ def preprocessing(sp: SparkSession):
         .na.fill(0.0) \
         .orderBy('dn')
 
+
+def preprocessing(sp: SparkSession):
+    print("--- preprocessing -----------------------")
+    df01: DataFrame = read(sp)
+
     stages = []
+    catvars = ['dept_id', 'wday']
     for v in catvars:
         stages += [StringIndexer(inputCol=v,
                                  outputCol=f"i{v}")]
@@ -68,6 +74,7 @@ def preprocessing(sp: SparkSession):
     ctx: SQLContext = SQLContext.getOrCreate(sp.sparkContext)
     df1 = ctx.createDataFrame(rdd1)
     df1.show()
+    nam = 'sp5_02'
     print(f"--- Writing: '{nam}'")
     hlp.writeToDatadirParquet(df1, nam)
     sp.stop()
@@ -80,3 +87,6 @@ if __name__ == '__main__':
         .getOrCreate()
 
     preprocessing(spark)
+
+    # df = read(spark).toPandas()
+    # print(f"--- training data before dummies: {df.shape}")
