@@ -1,0 +1,15 @@
+Predicting with deep NNs for 3 items leads to the following mse(s) for
+
+different NNs
+-- 30                                                 -     5.8119
+-- 15-30                                              -     1.9082
+-- 30-30                                              -     5.5867
+-- 30-30-30                                           -     2.4541
+-- 30-30-30-30                                        -     0.3413
+-- 30-30-30-30-30                                     -     0.3412
+-- 13-30-30                                           -     0.3412
+-- 13-26-30-30                                        -     0.9037
+-- 13-26-26-30-30                                     -     0.3413
+
+The NN is fully connected with intermediate layers of size n
+e.g. 2-4 is A net with two intermediate layers having 2 and 4 nodes.
