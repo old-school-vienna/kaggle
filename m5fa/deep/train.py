@@ -11,7 +11,43 @@ from tensorflow.keras import layers
 import helpers as hlp
 
 
-def build_model(num_input: int, num_output: int, ifac_in: List[float], ifac_out: List[float], stepw: float):
+def build_model0(num_input: int, num_output: int):
+    mo = keras.Sequential([
+        layers.Dense(num_input, activation='relu', input_shape=[num_input]),
+        layers.Dense(num_output, activation='relu'),
+        layers.Dense(num_output, activation='relu'),
+        layers.Dense(num_output, activation='relu'),
+        layers.Dense(num_output, activation='relu'),
+        layers.Dense(num_output)
+    ])
+    optimizer = tf.keras.optimizers.RMSprop(0.001)
+    mo.compile(loss='mse',
+               optimizer=optimizer,
+               metrics=['mae', 'mse'])
+    return mo
+
+
+def build_model1(num_input: int, num_output: int):
+    mo = keras.Sequential()
+    mo.add(layers.Dense(num_input, activation='relu', input_shape=[num_input]))
+    mo.add(layers.Dense(num_output, activation='relu'))
+    mo.add(layers.Dense(num_output, activation='relu'))
+    mo.add(layers.Dense(num_output, activation='relu'))
+    mo.add(layers.Dense(num_output, activation='relu'))
+    mo.add(layers.Dense(num_output))
+    optimizer = tf.keras.optimizers.RMSprop(0.001)
+    mo.compile(loss='mse',
+               optimizer=optimizer,
+               metrics=['mae', 'mse'])
+    return mo
+
+
+def build_model2(num_input: int, num_output: int):
+    return build_model_gen(num_input, num_output, [], [1.0, 1.0, 1.0, 1.0], 0.001)
+    # return build_model_gen(num_input, num_output, [], [1.0], 0.001)
+
+
+def build_model_gen(num_input: int, num_output: int, ifac_in: List[float], ifac_out: List[float], stepw: float):
     mo = keras.Sequential()
 
     mo.add(layers.Dense(num_input, activation='relu', input_shape=[num_input]))
@@ -28,42 +64,6 @@ def build_model(num_input: int, num_output: int, ifac_in: List[float], ifac_out:
                optimizer=optimizer,
                metrics=['mae', 'mse'])
     return mo
-
-
-def train1(net: tuple, stepw: float, data: dict) -> float:
-    model = build_model(len(data['xvars']), len(data['yvars']), net[0], net[1], stepw)
-
-    cb = tf.keras.callbacks.EarlyStopping(
-        monitor='val_loss', min_delta=0, patience=0, verbose=0, mode='auto',
-        baseline=None, restore_best_weights=False
-    )
-
-    history = model.fit(
-        data['train_data'], data['train_labels'],
-        epochs=1000, validation_split=0.2, verbose=0,
-        callbacks=[cb],
-    )
-    print("----HISTORY------------------------------------------------------------")
-    for h in history.history['mse']:
-        pprint(h)
-    print("-----------------------------------------------------------------------")
-    test_predictions = model.predict(data['test_data'])
-
-    pprint(data['test_labels'].shape)
-    pprint(test_predictions.shape)
-
-    error = ((data['test_labels'].values - test_predictions) ** 2).mean(axis=0)[0]
-    nam = nnam(net)
-    print(f"---- mse of {nam}: {error:.3f}")
-    return error
-
-
-def nnam(net) -> str:
-    def nam1(list) -> str:
-        fs = [f"{x:.2f}" for x in list]
-        return "-".join(fs)
-
-    return f"|{nam1(net[0])}|{nam1(net[1])}|"
 
 
 def train(spark: SparkSession):
@@ -95,33 +95,29 @@ def train(spark: SparkSession):
     print(train_labels.shape)
     print(test_labels.shape)
 
-    data = {
-        'xvars': xvars,
-        'yvars': yvars,
-        'train_data': train_data,
-        'train_labels': train_labels,
-        'test_data': test_data,
-        'test_labels': test_labels,
-    }
+    epochs = 1000
+    cb = tf.keras.callbacks.EarlyStopping(
+        monitor='val_loss', min_delta=0, patience=0, verbose=0, mode='auto',
+        baseline=None, restore_best_weights=False
+    )
 
-    stepws = [0.005, 0.001, 0.0001, 0.00001]
-    nets = [
-        ([1.0], [1.0]),
-        ([1.0, 1.5], [1.0, 1.0]),
-        ([1.0, 1.5], [0.5, 0.5, 1.0, 1.0, 1.0]),
-        ([1.0, 1.5, 2.0], [0.5, 0.5, 1.0, 1.0, 1.0, 1.0]),
-        ([1.0, 1.5, 2.0], [0.1, 0.5, 0.5, 1.0, 1.0, 1.0, 1.0, 1.0]),
-    ]
-    results = []
-    for stepw in stepws:
-        for net in nets:
-            err = train1(net, stepw, data)
-            nam = nnam(net)
-            results.append((stepw, nam, err))
+    model = build_model2(len(xvars), len(yvars))
+    history = model.fit(
+        train_data, train_labels,
+        epochs=epochs, validation_split=0.2, verbose=0,
+        callbacks=[cb],
+    )
+    print("----HISTORY------------------------------------------------------------")
+    for h in history.history['mse']:
+        pprint(h)
+    print("-----------------------------------------------------------------------")
+    test_predictions = model.predict(test_data)
 
-    print("-------RESULTS-------------------------------------------------")
-    for stepw, nam, err in results:
-        print(f"{stepw:10.5f} {nam:50} - {err:10.4f}")
+    pprint(test_labels.shape)
+    pprint(test_predictions.shape)
+
+    mse = ((test_labels.values - test_predictions) ** 2).mean(axis=0)
+    print(f"-- mse {numpy.mean(mse)}")
 
 
 if __name__ == "__main__":
