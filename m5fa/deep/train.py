@@ -115,7 +115,7 @@ def train(spark: SparkSession):
     results = []
     for stepw in stepws:
         for net in nets:
-            err = [train1(net, stepw, data) for net in nets]
+            err = train1(net, stepw, data)
             nam = nnam(net)
             results.append((stepw, nam, err))
 
