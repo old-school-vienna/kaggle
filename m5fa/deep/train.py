@@ -14,6 +14,9 @@ def build_model(num_input: int, num_output: int):
     mo = keras.Sequential([
         layers.Dense(num_input, activation='relu', input_shape=[num_input]),
         layers.Dense(num_output, activation='relu'),
+        layers.Dense(num_output, activation='relu'),
+        layers.Dense(num_output, activation='relu'),
+        layers.Dense(num_output, activation='relu'),
         layers.Dense(num_output)
     ])
 
