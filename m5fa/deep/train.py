@@ -10,7 +10,7 @@ from tensorflow.keras import layers
 import helpers as hlp
 
 
-def build_model(num_input: int, num_output: int):
+def build_model0(num_input: int, num_output: int):
     mo = keras.Sequential([
         layers.Dense(num_input, activation='relu', input_shape=[num_input]),
         layers.Dense(num_output, activation='relu'),
@@ -19,9 +19,22 @@ def build_model(num_input: int, num_output: int):
         layers.Dense(num_output, activation='relu'),
         layers.Dense(num_output)
     ])
-
     optimizer = tf.keras.optimizers.RMSprop(0.001)
+    mo.compile(loss='mse',
+               optimizer=optimizer,
+               metrics=['mae', 'mse'])
+    return mo
 
+
+def build_model1(num_input: int, num_output: int):
+    mo = keras.Sequential()
+    mo.add(layers.Dense(num_input, activation='relu', input_shape=[num_input]))
+    mo.add(layers.Dense(num_output, activation='relu'))
+    mo.add(layers.Dense(num_output, activation='relu'))
+    mo.add(layers.Dense(num_output, activation='relu'))
+    mo.add(layers.Dense(num_output, activation='relu'))
+    mo.add(layers.Dense(num_output))
+    optimizer = tf.keras.optimizers.RMSprop(0.001)
     mo.compile(loss='mse',
                optimizer=optimizer,
                metrics=['mae', 'mse'])
@@ -64,7 +77,7 @@ def train(spark: SparkSession):
         baseline=None, restore_best_weights=False
     )
 
-    model = build_model(len(xvars), len(yvars))
+    model = build_model1(len(xvars), len(yvars))
     history = model.fit(
         train_data, train_labels,
         epochs=epochs, validation_split=0.2, verbose=0,
