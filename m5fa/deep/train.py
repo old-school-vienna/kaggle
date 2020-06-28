@@ -1,3 +1,4 @@
+from pathlib import Path
 from pprint import pprint
 from typing import List
 
@@ -51,32 +52,21 @@ def build_model_gen(num_input: int, num_output: int, net: tuple, stepw: float):
     return mo
 
 
-def train(sp: SparkSession):
+def trainmulti(sp: SparkSession):
     df: pd.DataFrame = hlp.readFromDatadirParquet(sp, 'sp5_02').toPandas()
     df = df.astype(float)
 
     train_dataset = df.sample(frac=0.8, random_state=0)
     test_dataset = df.drop(train_dataset.index)
 
-    allvars = df.keys()
-    xvars = ['dn', 'flag_ram', 'month', 'snap', 'vdept_id_0', 'vdept_id_1',
-             'vwday_0', 'vwday_1', 'vwday_2', 'vwday_3', 'vwday_4', 'vwday_5', 'year']
-    yvars = [x for x in allvars if x not in xvars]
-    pprint(f"-- predictors X: {xvars}")
-    pprint(f"-- labels     y: {yvars}")
-
-    train_data = train_dataset[xvars]
-    train_labels = train_dataset[yvars]
-    test_data = test_dataset[xvars]
-    test_labels = test_dataset[yvars]
+    train_data, train_labels = split_data_labels(train_dataset)
+    test_data, test_labels = split_data_labels(test_dataset)
     print("----DATA-----------------------------------------------------------------------")
     print(f"-- train data: {train_data.shape}")
     print(f"-- train labels: {train_labels.shape}")
     print(f"-- test data: {test_data.shape}")
     print(f"-- test labels: {test_labels.shape}")
     print("-------------------------------------------------------------------------------")
-    nin = len(xvars)
-    nout = len(yvars)
 
     stepw = 0.001
     nets = [
@@ -92,8 +82,8 @@ def train(sp: SparkSession):
     ]
     results = []
     for net in nets:
-        mse = train1(net, stepw, nin, nout, test_data, test_labels, train_data, train_labels)
-        results.append((nnam(net, nin, nout), mse))
+        mse = train_cross(net, stepw, test_data, test_labels, train_data, train_labels)
+        results.append((nnam(net, train_data.shape[1], train_labels.shape[1]), mse))
 
     print("----RESULTS (final)---------------------------------------------------------------")
     for nam, mse in results:
@@ -101,20 +91,21 @@ def train(sp: SparkSession):
     print("----------------------------------------------------------------------------------")
 
 
-def train1(net: tuple, stepw: float,
-           nin: int, nout: int,
-           test_data: pd.DataFrame, test_labels: pd.DataFrame,
-           train_data: pd.DataFrame, train_labels: pd.DataFrame) -> float:
-    model = build_model_gen(nin, nout, net, stepw=stepw)
-    cb = tf.keras.callbacks.EarlyStopping(
-        monitor='val_loss', min_delta=0, patience=0, verbose=0, mode='auto',
-        baseline=None, restore_best_weights=False
-    )
-    history = model.fit(
-        train_data, train_labels,
-        epochs=1000, validation_split=0.2, verbose=0,
-        callbacks=[cb],
-    )
+def split_data_labels(df: pd.DataFrame) -> tuple:
+    allvars = df.keys()
+    xvars = ['dn', 'flag_ram', 'month', 'snap', 'vdept_id_0', 'vdept_id_1',
+             'vwday_0', 'vwday_1', 'vwday_2', 'vwday_3', 'vwday_4', 'vwday_5', 'year']
+    yvars = [x for x in allvars if x not in xvars]
+    pprint(f"-- predictors X: {xvars}")
+    pprint(f"-- labels     y: {yvars}")
+
+    return (df[xvars], df[yvars])
+
+
+def train_cross(net: tuple, stepw: float,
+                test_data: pd.DataFrame, test_labels: pd.DataFrame,
+                train_data: pd.DataFrame, train_labels: pd.DataFrame) -> float:
+    history, model = train(net, stepw, train_data, train_labels)
     print("----HISTORY------------------------------------------------------------")
     tmses = history.history['mse']
     print(f"-- train mse {len(tmses)} {tmses}")
@@ -130,6 +121,34 @@ def train1(net: tuple, stepw: float,
     return msem
 
 
+def train(net: tuple, stepw: float, data: pd.DataFrame, labels: pd.DataFrame) -> tuple:
+    nin = data.shape[1]
+    nout = labels.shape[1]
+    model = build_model_gen(nin, nout, net, stepw=stepw)
+    cb = tf.keras.callbacks.EarlyStopping(
+        monitor='mse', min_delta=0, patience=0, verbose=0, mode='auto',
+        baseline=None, restore_best_weights=False
+    )
+    history = model.fit(
+        data, labels,
+        epochs=100, verbose=0,
+        callbacks=[cb],
+    )
+    return history, model
+
+
+def train_save(sp: SparkSession):
+    net = ([], [1., 1., 1.])
+    stepw = 0.001
+    df: pd.DataFrame = hlp.readFromDatadirParquet(sp, 'sp5_02').toPandas().astype(float)
+    data, labels = split_data_labels(df)
+    hist, model = train(net, stepw, data, labels)
+    outp = Path(hlp.get_datadir()) / "tfm_a"
+    model.save(str(outp))
+    print("----------------------------------------------")
+    print(f"-- saved tensorflow model to '{outp}'")
+
+
 if __name__ == "__main__":
     spark = SparkSession.builder \
         .appName("train") \
@@ -138,4 +157,5 @@ if __name__ == "__main__":
     # df = hlp.readFromDatadirParquet(spark, 'sp5_02')
     # df.show()
 
-    train(spark)
+    # trainmulti(spark)
+    train_save(spark)
