@@ -11,6 +11,8 @@ from tensorflow.keras import layers
 
 import helpers as hlp
 
+fnam = "sp5_02_2"
+
 
 def nodes(fact: float, n: int) -> int:
     return int(n * fact)
@@ -53,7 +55,7 @@ def build_model_gen(num_input: int, num_output: int, net: tuple, stepw: float):
 
 
 def trainmulti(sp: SparkSession):
-    df: pd.DataFrame = hlp.readFromDatadirParquet(sp, 'sp5_02').toPandas()
+    df: pd.DataFrame = hlp.readFromDatadirParquet(sp, fnam).toPandas()
     df = df.astype(float)
 
     train_dataset = df.sample(frac=0.8, random_state=0)
@@ -87,15 +89,14 @@ def trainmulti(sp: SparkSession):
 
     print("----RESULTS (final)---------------------------------------------------------------")
     for nam, mse in results:
-        print(f"-- {nam:50} - {mse:10.4f}")
+        print(f"-- {nam:30} - {mse:10.4f}")
     print("----------------------------------------------------------------------------------")
 
 
 def split_data_labels(df: pd.DataFrame) -> tuple:
     allvars = df.keys()
-    xvars = ['dn', 'flag_ram', 'month', 'snap', 'vdept_id_0', 'vdept_id_1',
-             'vwday_0', 'vwday_1', 'vwday_2', 'vwday_3', 'vwday_4', 'vwday_5', 'year']
-    yvars = [x for x in allvars if x not in xvars]
+
+    yvars, xvars = hlp.split_vars(allvars)
     pprint(f"-- predictors X: {xvars}")
     pprint(f"-- labels     y: {yvars}")
 
@@ -108,15 +109,13 @@ def train_cross(net: tuple, stepw: float,
     history, model = train(net, stepw, train_data, train_labels)
     print("----HISTORY------------------------------------------------------------")
     tmses = history.history['mse']
-    print(f"-- train mse {len(tmses)} {tmses}")
+    print(f"-- train mse {len(tmses)} ..., {tmses[-4:]}")
     print("-----------------------------------------------------------------------")
     test_predictions = model.predict(test_data)
     mse = ((test_labels.values - test_predictions) ** 2).mean(axis=0)
     msem = numpy.mean(mse)
-    mses = numpy.sum(mse)
     print("----RESULT------------------------------------------------------------")
     print(f"-- mse mean: {msem:10.4f}")
-    print(f"-- mse sum:  {mses:10.4f}")
     print("----------------------------------------------------------------------")
     return msem
 
@@ -140,7 +139,7 @@ def train(net: tuple, stepw: float, data: pd.DataFrame, labels: pd.DataFrame) ->
 def train_save(sp: SparkSession):
     net = ([], [1., 1., 1.])
     stepw = 0.001
-    df: pd.DataFrame = hlp.readFromDatadirParquet(sp, 'sp5_02').toPandas().astype(float)
+    df: pd.DataFrame = hlp.readFromDatadirParquet(sp, fnam).toPandas().astype(float)
     data, labels = split_data_labels(df)
     hist, model = train(net, stepw, data, labels)
     outp = Path(hlp.get_datadir()) / "tfm_a"
@@ -154,8 +153,5 @@ if __name__ == "__main__":
         .appName("train") \
         .getOrCreate()
 
-    # df = hlp.readFromDatadirParquet(spark, 'sp5_02')
-    # df.show()
-
-    # trainmulti(spark)
-    train_save(spark)
+    trainmulti(spark)
+    # train_save(spark)

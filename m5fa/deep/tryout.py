@@ -1,10 +1,11 @@
 import datetime
 import os
 from pathlib import Path
+from typing import List, Tuple
 
 import pandas as pd
 from pprint import pprint
-from pyspark.sql import SparkSession
+import pyspark.sql as psql
 
 import helpers as hlp
 import numpy as np
@@ -36,7 +37,7 @@ def read_parquet_folder_as_pandas(path):
 
 def read_parquet():
     spark = SparkSession.builder \
-        .appName(os.path.basename("preporcessing")) \
+        .appName(os.path.basename("tryout")) \
         .getOrCreate()
     df: pd.DataFrame = hlp.readFromDatadirParquet(spark, 'sp5_02').toPandas()
     print(np.sort(df.keys().values))
@@ -78,4 +79,21 @@ def concat_lists():
     pprint(l3)
 
 
-concat_lists()
+def extract_ids():
+    spark = psql.SparkSession.builder \
+        .appName(os.path.basename("tryout")) \
+        .getOrCreate()
+
+    list = hlp.read_csv(spark, 'Sales5_Ab2011_InklPred.csv') \
+        .groupBy('item_id') \
+        .count() \
+        .orderBy('item_id') \
+        .select('item_id') \
+        .collect()
+
+    strlist = [r['item_id'] for r in list]
+
+    pprint(len(strlist))
+    pprint(strlist[800:1850])
+
+

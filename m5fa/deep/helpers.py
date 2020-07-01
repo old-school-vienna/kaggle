@@ -1,13 +1,15 @@
 import os
 from collections import ChainMap
 from pathlib import Path
-from typing import Any
+from typing import Any, List, Tuple, Iterator
 
 import pyspark.sql.functions as F
+import pyspark.sql.types as T
 from pyspark import Row
 from pyspark.ml.linalg import Vector
 from pyspark.sql import DataFrame, SparkSession
 
+import re
 
 def readFromDatadirParquet(spark: SparkSession, nam: str) -> DataFrame:
     path = get_datadir() / f"{nam}.parquet"
@@ -69,6 +71,41 @@ def one_hot_row(r: Row) -> Row:
     di = dict(ChainMap(*dicts))
     return Row(**di)
 
+
+def read_csv(sp: SparkSession, fnam: str) -> DataFrame:
+    datadir = get_datadir()
+
+    schema = T.StructType([
+        T.StructField('year', T.IntegerType(), True),
+        T.StructField('month', T.IntegerType(), True),
+        T.StructField('dn', T.IntegerType(), True),
+        T.StructField('wday', T.IntegerType(), True),
+        T.StructField('snap', T.IntegerType(), True),
+        T.StructField('dept_id', T.StringType(), True),
+        T.StructField('item_id', T.StringType(), True),
+        T.StructField('store_id', T.StringType(), True),
+        T.StructField('sales', T.DoubleType(), True),
+        T.StructField('flag_ram', T.IntegerType(), True),
+        T.StructField('Sales_Pred', T.DoubleType(), True),
+    ])
+
+    csv_path = datadir / fnam
+    print(f"--- Reading: '{csv_path}'")
+
+    return sp.read.csv(str(csv_path), header='true', schema=schema)
+
+regex = """[A-Z]*_[0-9]{1}_[0-9]{3}_[A-Z]{2}_[0-9]"""
+pattern = re.compile(regex)
+
+def _is_label_var(nam: str) -> bool:
+    return bool(pattern.match(nam))
+
+import itertools
+
+def split_vars(vars: List[str])-> Tuple[list, list]:
+    grps  = itertools.groupby(vars, _is_label_var)
+    li = [list(iter) for key, iter in grps]
+    return (li[0], li[1])
 
 if __name__ == "__main__":
     spark = SparkSession.builder \
