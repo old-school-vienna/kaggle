@@ -1,3 +1,6 @@
+from pathlib import Path
+import helpers as hlp
+
 subsets = [
     ('mini', ["FOODS_1_001", "HOBBIES_1_021", "HOUSEHOLD_2_491"]),
     ('medium', ['HOBBIES_2_135', 'HOBBIES_2_136', 'HOBBIES_2_137', 'HOBBIES_2_138', 'HOBBIES_2_139', 'HOBBIES_2_140',
@@ -32,5 +35,9 @@ subsets = [
 ]
 
 
-def create_fnam(nam: str) -> str:
-    return f"sp5_02_{nam}"
+def create_fnam(subs_nam: str) -> str:
+    return f"sp5_02_{subs_nam}"
+
+
+def create_trained_modelPath(subs_nam: str) -> Path:
+    return Path(hlp.get_datadir()) / f"tfm_{subs_nam}"

@@ -12,6 +12,22 @@ from tensorflow.keras import layers
 import helpers as hlp
 import configuration as cfg
 
+nets = [
+    ([], [1.]),
+    ([], [0.5, 1.]),
+    ([], [1., 1.]),
+    ([], [1., 1., 1.]),
+    ([], [1., 1., 1., 1.]),
+    ([], [1., 1., 1., 1., 1.]),
+    ([1.], [1., 1.]),
+    ([1.], [2., 1.]),
+    ([1.], [3., 1.]),
+    ([1., 2.], [1., 1.]),
+    ([1., 2., 2.], [1., 1.]),
+    ([1., 2., 2.], [0.5, 1.]),
+    ([1., 2., 2.], [0.5, 1., 1.]),
+]
+
 
 def nodes(fact: float, n: int) -> int:
     return int(n * fact)
@@ -73,21 +89,6 @@ def trainmulti(sp: SparkSession):
     print("-------------------------------------------------------------------------------")
 
     stepw = 0.001
-    nets = [
-        ([], [1.]),
-        ([], [0.5, 1.]),
-        ([], [1., 1.]),
-        ([], [1., 1., 1.]),
-        ([], [1., 1., 1., 1.]),
-        ([], [1., 1., 1., 1., 1.]),
-        ([1.], [1., 1.]),
-        ([1.], [2., 1.]),
-        ([1.], [3., 1.]),
-        ([1., 2.], [1., 1.]),
-        ([1., 2., 2.], [1., 1.]),
-        ([1., 2., 2.], [0.5, 1.]),
-        ([1., 2., 2.], [0.5, 1., 1.]),
-    ]
     results = []
     for net in nets:
         mse = train_cross(net, stepw, test_data, test_labels, train_data, train_labels)
@@ -143,12 +144,14 @@ def train(net: tuple, stepw: float, data: pd.DataFrame, labels: pd.DataFrame) ->
 
 
 def train_save(sp: SparkSession):
-    net = ([], [1., 1., 1.])
+    subs_nam, subs_ids = cfg.subsets[1]
+    net = nets[11]
     stepw = 0.001
+    fnam = cfg.create_fnam(subs_nam)
     df: pd.DataFrame = hlp.readFromDatadirParquet(sp, fnam).toPandas().astype(float)
     data, labels = split_data_labels(df)
     hist, model = train(net, stepw, data, labels)
-    outp = Path(hlp.get_datadir()) / "tfm_a"
+    outp = cfg.create_trained_modelPath(subs_nam)
     model.save(str(outp))
     print("----------------------------------------------")
     print(f"-- saved tensorflow model to '{outp}'")
@@ -159,5 +162,5 @@ if __name__ == "__main__":
         .appName("train") \
         .getOrCreate()
 
-    trainmulti(spark)
-    # train_save(spark)
+    # trainmulti(spark)
+    train_save(spark)
