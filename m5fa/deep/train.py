@@ -10,8 +10,7 @@ from tensorflow import keras
 from tensorflow.keras import layers
 
 import helpers as hlp
-
-fnam = "sp5_02_2"
+import configuration as cfg
 
 
 def nodes(fact: float, n: int) -> int:
@@ -55,6 +54,9 @@ def build_model_gen(num_input: int, num_output: int, net: tuple, stepw: float):
 
 
 def trainmulti(sp: SparkSession):
+    subs = cfg.subsets[2]
+    fnam = cfg.create_fnam(subs[0])
+
     df: pd.DataFrame = hlp.readFromDatadirParquet(sp, fnam).toPandas()
     df = df.astype(float)
 
@@ -79,8 +81,12 @@ def trainmulti(sp: SparkSession):
         ([], [1., 1., 1., 1.]),
         ([], [1., 1., 1., 1., 1.]),
         ([1.], [1., 1.]),
+        ([1.], [2., 1.]),
+        ([1.], [3., 1.]),
         ([1., 2.], [1., 1.]),
         ([1., 2., 2.], [1., 1.]),
+        ([1., 2., 2.], [0.5, 1.]),
+        ([1., 2., 2.], [0.5, 1., 1.]),
     ]
     results = []
     for net in nets:
