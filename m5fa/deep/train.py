@@ -1,7 +1,3 @@
-from pathlib import Path
-from pprint import pprint
-from typing import List
-
 import numpy
 import pandas as pd
 import tensorflow as tf
@@ -9,8 +5,8 @@ from pyspark.sql import SparkSession
 from tensorflow import keras
 from tensorflow.keras import layers
 
-import helpers as hlp
 import configuration as cfg
+import helpers as hlp
 
 nets = [
     ([], [1.]),
@@ -69,9 +65,9 @@ def build_model_gen(num_input: int, num_output: int, net: tuple, stepw: float):
     return mo
 
 
-def trainmulti(sp: SparkSession):
-    subs = cfg.subsets[2]
-    fnam = cfg.create_fnam(subs[0])
+def trainmulti(sp: SparkSession, subset_id: int):
+    subs_name, subs_items = cfg.subsets[subset_id]
+    fnam = cfg.create_fnam(subs_name)
 
     df: pd.DataFrame = hlp.readFromDatadirParquet(sp, fnam).toPandas()
     df = df.astype(float)
@@ -79,8 +75,8 @@ def trainmulti(sp: SparkSession):
     train_dataset = df.sample(frac=0.8, random_state=0)
     test_dataset = df.drop(train_dataset.index)
 
-    train_data, train_labels = split_data_labels(train_dataset)
-    test_data, test_labels = split_data_labels(test_dataset)
+    train_data, train_labels = hlp.split_data_labels(train_dataset)
+    test_data, test_labels = hlp.split_data_labels(test_dataset)
     print("----DATA-----------------------------------------------------------------------")
     print(f"-- train data: {train_data.shape}")
     print(f"-- train labels: {train_labels.shape}")
@@ -103,7 +99,7 @@ def trainmulti(sp: SparkSession):
 def train_cross(net: tuple, stepw: float,
                 test_data: pd.DataFrame, test_labels: pd.DataFrame,
                 train_data: pd.DataFrame, train_labels: pd.DataFrame) -> float:
-    history, model = train(net, stepw, train_data, train_labels)
+    history, model = _train(net, stepw, train_data, train_labels)
     print("----HISTORY------------------------------------------------------------")
     tmses = history.history['mse']
     print(f"-- train mse {len(tmses)} ..., {tmses[-4:]}")
@@ -117,7 +113,7 @@ def train_cross(net: tuple, stepw: float,
     return msem
 
 
-def train(net: tuple, stepw: float, data: pd.DataFrame, labels: pd.DataFrame) -> tuple:
+def _train(net: tuple, stepw: float, data: pd.DataFrame, labels: pd.DataFrame) -> tuple:
     nin = data.shape[1]
     nout = labels.shape[1]
     model = build_model_gen(nin, nout, net, stepw=stepw)
@@ -133,14 +129,14 @@ def train(net: tuple, stepw: float, data: pd.DataFrame, labels: pd.DataFrame) ->
     return history, model
 
 
-def train_save(sp: SparkSession):
-    subs_nam, subs_ids = cfg.subsets[1]
+def train_save(sp: SparkSession, subs_id: int):
+    subs_nam, subs_ids = cfg.subsets[subs_id]
     net = nets[11]
     stepw = 0.001
     fnam = cfg.create_fnam(subs_nam)
     df: pd.DataFrame = hlp.readFromDatadirParquet(sp, fnam).toPandas().astype(float)
     data, labels = hlp.split_data_labels(df)
-    hist, model = train(net, stepw, data, labels)
+    hist, model = _train(net, stepw, data, labels)
     outp = cfg.create_trained_model_path(subs_nam)
     model.save(str(outp))
     print("----------------------------------------------")
@@ -152,5 +148,6 @@ if __name__ == "__main__":
         .appName("train") \
         .getOrCreate()
 
-    # trainmulti(spark)
-    train_save(spark)
+
+    # train_multi(spark)
+    # train_save(spark, 2)

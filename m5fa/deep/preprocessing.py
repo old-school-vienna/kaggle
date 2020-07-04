@@ -15,7 +15,7 @@ def read(sp: SparkSession, items: list) -> DataFrame:
         The where clause for small datasets    
         .where(F.col('item_id').isin("FOODS_1_001", "HOBBIES_1_021", "HOUSEHOLD_2_491")) \
     """
-    fvars = ['year', 'month', 'dn', 'wday', 'snap', 'dept_id', 'flag_ram']
+    fvars = ['year', 'month', 'dn', 'wday', 'snap', 'flag_ram']
     return hlp.read_m5_csv(sp) \
         .where(F.col('item_id').isin(*items)) \
         .withColumn('subm_id', F.concat(F.col('item_id'), F.lit('_'), F.col('store_id'))) \
@@ -27,18 +27,18 @@ def read(sp: SparkSession, items: list) -> DataFrame:
         .orderBy('dn')
 
 
-def preprocessing(sp: SparkSession):
+def preprocessing(sp: SparkSession, subset_id: int):
     # Select here one of the predefined subsets
-    subs = cfg.subsets[2]
+    subs_name, subs_items = cfg.subsets[subset_id]
 
-    fnam = cfg.create_fnam(subs[0])
+    fnam = cfg.create_fnam(subs_name)
     print(f"--- preprocessing --- output :{fnam}--------------------")
 
-    df01: DataFrame = read(sp, subs[1])
+    df01: DataFrame = read(sp, subs_items)
 
     stages = []
-    catvars = ['dept_id', 'wday']
-    
+    catvars = ['wday']
+
     for v in catvars:
         stages += [StringIndexer(inputCol=v,
                                  outputCol=f"i{v}")]
@@ -57,7 +57,6 @@ def preprocessing(sp: SparkSession):
     df1 = ctx.createDataFrame(rdd1)
     print(f"--- Writing: '{fnam}'")
     hlp.writeToDatadirParquet(df1, fnam)
-    sp.stop()
 
 
 if __name__ == '__main__':
@@ -65,8 +64,5 @@ if __name__ == '__main__':
         .appName(os.path.basename("preporcessing")) \
         .config("spark.sql.pivotMaxValues", 100000) \
         .getOrCreate()
-
-    preprocessing(spark)
-
-    # df = read(spark).toPandas()
-    # print(f"--- training data before dummies: {df.shape}")
+    subset_id = 2
+    preprocessing(spark, subset_id)
