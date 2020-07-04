@@ -16,7 +16,7 @@ def read(sp: SparkSession, items: list) -> DataFrame:
         .where(F.col('item_id').isin("FOODS_1_001", "HOBBIES_1_021", "HOUSEHOLD_2_491")) \
     """
     fvars = ['year', 'month', 'dn', 'wday', 'snap', 'dept_id', 'flag_ram']
-    return hlp.read_csv(sp, "Sales5_Ab2011_InklPred.csv") \
+    return hlp.read_m5_csv(sp) \
         .where(F.col('item_id').isin(*items)) \
         .withColumn('subm_id', F.concat(F.col('item_id'), F.lit('_'), F.col('store_id'))) \
         .drop('item_id', 'store_id', 'Sales_Pred') \
@@ -38,6 +38,7 @@ def preprocessing(sp: SparkSession):
 
     stages = []
     catvars = ['dept_id', 'wday']
+    
     for v in catvars:
         stages += [StringIndexer(inputCol=v,
                                  outputCol=f"i{v}")]
