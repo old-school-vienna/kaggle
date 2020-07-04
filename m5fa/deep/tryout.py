@@ -57,3 +57,27 @@ def extract_ids():
 
     pprint(len(strlist))
     pprint(strlist[800:1850])
+
+
+def check_subm():
+    subm_nam = 'GLM_Final_2015.csv'
+    datdir = hlp.get_datadir()
+    print(f"-- reading {subm_nam}")
+    df: pd.DataFrame = pd.read_csv(datdir / subm_nam)
+    print(df.shape)
+    print(df.keys())
+    print(df)
+    tmp_nam = datdir / 'tmp.csv'
+    print(f"-- writing {tmp_nam}")
+    df.to_csv(str(tmp_nam))
+
+
+def analyse_m5():
+    spark = SparkSession.builder \
+        .appName("submission") \
+        .getOrCreate()
+    df = hlp.read_m5_csv(spark)
+    df_train = df.where("sales is not null")
+    df_prop = df.where("sales is null")
+    df_train.describe().show()
+    df_prop.describe().show()
