@@ -1,15 +1,17 @@
+import itertools
 import os
+import re
 from collections import ChainMap
 from pathlib import Path
-from typing import Any, List, Tuple, Iterator
+from pprint import pprint
+from typing import Any, List, Tuple
 
+import pandas as pd
 import pyspark.sql.functions as F
 import pyspark.sql.types as T
 from pyspark import Row
 from pyspark.ml.linalg import Vector
 from pyspark.sql import DataFrame, SparkSession
-
-import re
 
 
 def readFromDatadirParquet(spark: SparkSession, nam: str) -> DataFrame:
@@ -105,17 +107,17 @@ def _is_label_var(nam: str) -> bool:
     return bool(pattern.match(nam))
 
 
-import itertools
-
-
 def split_vars(vars: List[str]) -> Tuple[list, list]:
     grps = itertools.groupby(vars, _is_label_var)
     li = [list(iter) for key, iter in grps]
-    return (li[0], li[1])
+    return li[0], li[1]
 
 
-if __name__ == "__main__":
-    spark = SparkSession.builder \
-        .appName("helpers") \
-        .getOrCreate()
-    create_small_dataframe(spark)
+def split_data_labels(df: pd.DataFrame) -> tuple:
+    allvars = df.keys()
+
+    yvars, xvars = split_vars(allvars)
+    pprint(f"-- predictors X: {xvars}")
+    pprint(f"-- labels     y: {yvars}")
+
+    return df[xvars], df[yvars]

@@ -39,5 +39,5 @@ def create_fnam(subs_nam: str) -> str:
     return f"sp5_02_{subs_nam}"
 
 
-def create_trained_modelPath(subs_nam: str) -> Path:
+def create_trained_model_path(subs_nam: str) -> Path:
     return Path(hlp.get_datadir()) / f"tfm_{subs_nam}"

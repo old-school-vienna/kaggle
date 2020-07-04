@@ -100,16 +100,6 @@ def trainmulti(sp: SparkSession):
     print("----------------------------------------------------------------------------------")
 
 
-def split_data_labels(df: pd.DataFrame) -> tuple:
-    allvars = df.keys()
-
-    yvars, xvars = hlp.split_vars(allvars)
-    pprint(f"-- predictors X: {xvars}")
-    pprint(f"-- labels     y: {yvars}")
-
-    return (df[xvars], df[yvars])
-
-
 def train_cross(net: tuple, stepw: float,
                 test_data: pd.DataFrame, test_labels: pd.DataFrame,
                 train_data: pd.DataFrame, train_labels: pd.DataFrame) -> float:
@@ -149,9 +139,9 @@ def train_save(sp: SparkSession):
     stepw = 0.001
     fnam = cfg.create_fnam(subs_nam)
     df: pd.DataFrame = hlp.readFromDatadirParquet(sp, fnam).toPandas().astype(float)
-    data, labels = split_data_labels(df)
+    data, labels = hlp.split_data_labels(df)
     hist, model = train(net, stepw, data, labels)
-    outp = cfg.create_trained_modelPath(subs_nam)
+    outp = cfg.create_trained_model_path(subs_nam)
     model.save(str(outp))
     print("----------------------------------------------")
     print(f"-- saved tensorflow model to '{outp}'")
