@@ -11,6 +11,7 @@ from pyspark.sql import DataFrame, SparkSession
 
 import re
 
+
 def readFromDatadirParquet(spark: SparkSession, nam: str) -> DataFrame:
     path = get_datadir() / f"{nam}.parquet"
     return spark.read.parquet(str(path))
@@ -72,7 +73,7 @@ def one_hot_row(r: Row) -> Row:
     return Row(**di)
 
 
-def read_csv(sp: SparkSession, fnam: str) -> DataFrame:
+def read_m5_csv(sp: SparkSession) -> DataFrame:
     datadir = get_datadir()
 
     schema = T.StructType([
@@ -89,27 +90,32 @@ def read_csv(sp: SparkSession, fnam: str) -> DataFrame:
         T.StructField('Sales_Pred', T.DoubleType(), True),
     ])
 
+    fnam = 'Sales5_Ab2011_InklPred.csv'
     csv_path = datadir / fnam
     print(f"--- Reading: '{csv_path}'")
 
     return sp.read.csv(str(csv_path), header='true', schema=schema)
 
+
 regex = """[A-Z]*_[0-9]{1}_[0-9]{3}_[A-Z]{2}_[0-9]"""
 pattern = re.compile(regex)
+
 
 def _is_label_var(nam: str) -> bool:
     return bool(pattern.match(nam))
 
+
 import itertools
 
-def split_vars(vars: List[str])-> Tuple[list, list]:
-    grps  = itertools.groupby(vars, _is_label_var)
+
+def split_vars(vars: List[str]) -> Tuple[list, list]:
+    grps = itertools.groupby(vars, _is_label_var)
     li = [list(iter) for key, iter in grps]
     return (li[0], li[1])
+
 
 if __name__ == "__main__":
     spark = SparkSession.builder \
         .appName("helpers") \
         .getOrCreate()
     create_small_dataframe(spark)
-
