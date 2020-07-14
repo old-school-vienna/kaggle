@@ -1,7 +1,8 @@
 from datetime import datetime
-import os
 from pathlib import Path
+
 import pandas as pd
+
 import helpers as hlp
 
 """
@@ -15,6 +16,8 @@ sample_submission.csv
 sales_train.csv
 
 sales_train_dn.csv
+['date', 'date_block_num', 'shop_id', 'item_id', 'item_price', 'item_cnt_day', 'dn']
+
 
    22.165 items
 2.935.849 training data
