@@ -20,6 +20,10 @@ def add_dn(dd: Path):
 
 dd = hlp.dd()
 df = pd.read_csv(dd / "sales_train_dn.csv")
-# ['date', 'date_block_num', 'shop_id', 'item_id', 'item_price', 'item_cnt_day', 'dn']
-df1 = df.pivot(index='dn', columns='date_block_num', values=['item_cnt_day'])
+
+# ['date', 'date_block_num', 'shop_id', 'item_id', 'item_price', 'dn']
+# 'item_id'
+# 'item_cnt_day'
+df1 = hlp.pivot(df, ['date', 'date_block_num', 'shop_id', 'item_id', 'item_price', 'dn'],
+                'item_id', 'item_cnt_day')
 print(df1)
